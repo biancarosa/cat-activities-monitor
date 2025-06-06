@@ -1,0 +1,17 @@
+{
+  "domain": "cat_activities_monitor",
+  "name": "Cat Activities Monitor",
+  "codeowners": ["@yourusername"],
+  "config_flow": true,
+  "dependencies": [],
+  "documentation": "https://github.com/yourusername/cat-activities-monitor",
+  "integration_type": "service",
+  "iot_class": "local_polling",
+  "issue_tracker": "https://github.com/yourusername/cat-activities-monitor/issues",
+  "requirements": [
+    "opencv-python>=4.8.0",
+    "pillow>=10.0.0",
+    "requests>=2.31.0"
+  ],
+  "version": "1.0.0"
+} 
