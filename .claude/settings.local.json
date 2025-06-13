@@ -8,5 +8,6 @@
       "Bash(npm run lint)"
     ],
     "deny": []
-  }
+  },
+  "enableAllProjectMcpServers": false
 }
