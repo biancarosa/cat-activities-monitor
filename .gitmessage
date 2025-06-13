@@ -1,0 +1,47 @@
+# <type>(<scope>): <subject>
+#
+# <body>
+#
+# <footer>
+#
+# Types:
+#   feat:     A new feature
+#   fix:      A bug fix
+#   docs:     Documentation changes
+#   style:    Code style changes (formatting, etc)
+#   refactor: Code changes that neither fix bugs nor add features
+#   perf:     Performance improvements
+#   test:     Adding or fixing tests
+#   build:    Changes to build system or dependencies
+#   ci:       Changes to CI configuration
+#   chore:    Other changes that don't modify src or test files
+#   revert:   Reverts a previous commit
+#
+# Scopes:
+#   Frontend:
+#     frontend    - General frontend changes
+#     ui          - UI components and layouts
+#     components  - React components
+#     styles      - CSS and styling
+#     api-client  - API client code
+#   Backend:
+#     api         - API endpoints and routes
+#     database    - Database related changes
+#     ml          - Machine learning models
+#     detection   - Detection service
+#   Shared:
+#     deps        - Production dependencies
+#     deps-dev    - Development dependencies
+#     docker      - Docker configuration
+#     ci          - CI/CD configuration
+#     docs        - Documentation
+#     config      - Configuration files
+#
+# Example:
+#   feat(api): add new detection endpoint
+#
+#   - Add POST /api/detections endpoint
+#   - Implement detection service
+#   - Add request validation
+#
+#   Closes #123 
