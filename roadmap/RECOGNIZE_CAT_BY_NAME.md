@@ -8,17 +8,19 @@ This roadmap outlines the implementation plan for adding individual cat recognit
 
 The existing system:
 - Detects "cats" as a general class using YOLO11
+- **Advanced Activity Detection**: Multi-layered analysis including pose-based, movement-based, and temporal pattern recognition
 - Relies on user feedback for cat naming and identification
 - Builds rich cat profiles with metadata but no automatic recognition
+- **Activity Feedback Integration**: Collects user feedback on cat activities for model training
 - Uses color-coding for visual consistency across sessions
 
 ## Proposed Solution: Two-Stage Pipeline
 
 ### Architecture
 ```
-Camera Feed → YOLO Detection → Feature Extraction → Cat Classification → Results
-                    ↓                    ↓                    ↓
-              Bounding Boxes      Feature Vectors      Cat IDs + Confidence
+Camera Feed → YOLO Detection → Feature Extraction → Cat Classification → Activity Analysis → Results
+                    ↓                    ↓                    ↓                    ↓
+              Bounding Boxes      Feature Vectors      Cat IDs + Confidence    Per-Cat Activities
 ```
 
 ### Technical Approach
@@ -34,9 +36,15 @@ Camera Feed → YOLO Detection → Feature Extraction → Cat Classification →
 - Classify cats with confidence scoring
 - Fall back to "unknown_cat" for low-confidence matches
 
+**Stage 3: Activity Enhancement (Existing + Enhanced)**
+- Apply existing multi-layered activity detection to identified cats
+- Link activities to specific cat identities for personalized behavior tracking
+- Use cat-specific activity history for improved confidence and pattern recognition
+- Enable activity-based training data for both recognition and behavior models
+
 ## Implementation Plan
 
-### Phase 1: Foundation (2-3 weeks)
+### Phase 1: Foundation
 
 #### Database Schema Changes
 ```sql
@@ -48,7 +56,9 @@ CREATE TABLE cat_features (
     image_path VARCHAR(500),        -- Source image for this feature
     extraction_timestamp TIMESTAMP DEFAULT NOW(),
     quality_score FLOAT,           -- Image quality metric (0-1)
-    pose_variant VARCHAR(50)       -- sitting, standing, lying, etc.
+    pose_variant VARCHAR(50),      -- sitting, standing, lying, etc.
+    detected_activity VARCHAR(50), -- Activity detected when this feature was extracted
+    activity_confidence FLOAT     -- Confidence of activity detection
 );
 
 -- New table for recognition model management
@@ -80,7 +90,7 @@ ALTER TABLE detections ADD COLUMN is_manually_corrected BOOLEAN DEFAULT FALSE;
 - Quality validation for training images
 - Progress indicators for training data completeness
 
-### Phase 2: Core Recognition (3-4 weeks)
+### Phase 2: Core Recognition
 
 #### Two-Stage Pipeline Integration
 ```python
@@ -132,7 +142,7 @@ class EnhancedDetectionService:
 - Quick correction interface for misidentified cats
 - Recognition status in image gallery
 
-### Phase 3: Training Pipeline (2-3 weeks)
+### Phase 3: Training Pipeline
 
 #### Automated Model Training
 ```python
@@ -142,21 +152,25 @@ class CatRecognitionTrainer:
         self.feature_extractor = self._load_feature_extractor()
     
     async def train_classifier(self, cats_to_include: List[str] = None):
-        # Extract features from all confirmed cat images
+        # Extract features from all confirmed cat images with activity context
         training_data = await self._prepare_training_data(cats_to_include)
         
+        # Include activity-enhanced features for better recognition
+        activity_enhanced_data = await self._enhance_with_activity_data(training_data)
+        
         # Train KNN/SVM classifier on features
-        classifier = self._train_classifier(training_data)
+        classifier = self._train_classifier(activity_enhanced_data)
         
         # Validate and save model
-        accuracy = self._validate_model(classifier, training_data)
+        accuracy = self._validate_model(classifier, activity_enhanced_data)
         model_path = await self._save_model(classifier, cats_to_include, accuracy)
         
         return {
             "model_path": model_path,
             "accuracy": accuracy,
             "cats_included": cats_to_include,
-            "training_samples": len(training_data)
+            "training_samples": len(activity_enhanced_data),
+            "activity_samples": len([d for d in activity_enhanced_data if d.get('activity')])
         }
 ```
 
@@ -170,22 +184,28 @@ class CatRecognitionTrainer:
 - Image quality assessment before adding to training set
 - Duplicate detection and removal
 - Pose diversity requirements per cat
+- **Activity diversity requirements per cat** (ensure cats are trained across different activities)
 - Training data balance monitoring
+- **Activity-pose correlation validation** (ensure sufficient training examples for each cat in various activity states)
 
-### Phase 4: Enhancement & Optimization (2-3 weeks)
+### Phase 4: Enhancement & Optimization
 
 #### Advanced UI Features
 - **Training Mode Interface**
   - Guided image capture for new cats
   - Pose guidance ("Please capture sitting cat", "standing cat", etc.)
+  - **Activity guidance** ("Please capture cat while eating", "sleeping", etc.)
   - Real-time quality feedback
   - Training progress visualization
+  - **Activity-pose combination tracking** (show which combinations are missing)
 
 - **Cat Profile Management**
   - View training image counts per cat
+  - **View activity coverage per cat** (which activities have been trained)
   - Delete/merge duplicate cat profiles
   - Set cat aliases for multiple names
   - Training data quality dashboard
+  - **Per-cat activity accuracy metrics** (recognition accuracy by activity type)
 
 - **Settings Integration**
   - Recognition on/off toggle
@@ -310,22 +330,28 @@ opencv-python>=4.5.0    # Image processing
 
 ### Advanced Features
 - **Multi-camera Tracking**: Track cats across different camera locations
-- **Behavioral Recognition**: Identify specific behaviors per cat
-- **Health Monitoring**: Detect changes in cat appearance or behavior
-- **Integration APIs**: Allow third-party applications to use recognition
+- **Enhanced Behavioral Recognition**: Leverage cat identity to improve activity detection accuracy
+- **Personalized Activity Patterns**: Learn individual cat behavior patterns for anomaly detection
+- **Health Monitoring**: Detect changes in cat appearance or behavior based on established patterns
+- **Activity-based Alerts**: Notify users when specific cats perform unusual activities
+- **Integration APIs**: Allow third-party applications to use recognition and activity data
 
 ### Technical Improvements
 - **Online Learning**: Continuously improve recognition with user feedback
 - **Transfer Learning**: Use recognition data to improve detection accuracy
-- **Ensemble Methods**: Combine multiple recognition approaches
+- **Activity-Enhanced Recognition**: Use activity context to improve cat identification confidence
+- **Temporal Activity Modeling**: Model cat behavior patterns over time for better recognition
+- **Ensemble Methods**: Combine multiple recognition approaches with activity-based weighting
 - **Edge Computing**: Move processing to edge devices
 
 ## Conclusion
 
 This roadmap provides a comprehensive plan for adding individual cat recognition to the Cat Activities Monitor. The phased approach ensures minimal disruption to existing functionality while delivering immediate value to users. The two-stage pipeline leverages proven technologies and maintains compatibility with the current YOLO-based detection system.
 
-**Total Timeline**: 9-13 weeks
-**Key Success Factor**: User engagement in providing training data
-**Primary Benefit**: Transition from manual to automatic cat identification with human oversight
+**Key Success Factor**: User engagement in providing training data with activity context
+**Primary Benefits**: 
+- Transition from manual to automatic cat identification with human oversight
+- Enhanced activity detection accuracy through cat-specific behavioral modeling
+- Rich training data combining visual recognition with behavioral patterns
 
-The implementation will transform the system from a detection tool to a comprehensive cat monitoring and identification platform, significantly improving user experience and system utility.
+The implementation will transform the system from a detection tool to a comprehensive cat monitoring, identification, and behavioral analysis platform, significantly improving user experience and system utility.
