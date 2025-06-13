@@ -1,0 +1,1303 @@
+components:
+  schemas:
+    BoundingBox:
+      description: 'Standardized bounding box model for feedback.
+
+
+        Represents rectangular coordinates in pixel space with additional
+
+        width and height for convenience.'
+      properties:
+        height:
+          description: Height of the bounding box in pixels
+          example: 249.9
+          minimum: 0.0
+          title: Height
+          type: number
+        width:
+          description: Width of the bounding box in pixels
+          example: 200.3
+          minimum: 0.0
+          title: Width
+          type: number
+        x1:
+          description: Left edge x-coordinate in pixels
+          example: 100.5
+          minimum: 0.0
+          title: X1
+          type: number
+        x2:
+          description: Right edge x-coordinate in pixels
+          example: 300.8
+          minimum: 0.0
+          title: X2
+          type: number
+        y1:
+          description: Top edge y-coordinate in pixels
+          example: 150.2
+          minimum: 0.0
+          title: Y1
+          type: number
+        y2:
+          description: Bottom edge y-coordinate in pixels
+          example: 400.1
+          minimum: 0.0
+          title: Y2
+          type: number
+      required:
+      - x1
+      - y1
+      - x2
+      - y2
+      - width
+      - height
+      title: BoundingBox
+      type: object
+    CatActivity:
+      description: 'Enumeration of detectable cat activities.
+
+
+        These activities are recognized through pose analysis and behavioral patterns.'
+      enum:
+      - unknown
+      - sitting
+      - lying
+      - standing
+      - moving
+      - eating
+      - playing
+      - sleeping
+      - grooming
+      title: CatActivity
+      type: string
+    CatProfile:
+      description: 'Profile for a named cat with their characteristics.
+
+
+        Contains identification information, physical characteristics,
+
+        behavioral patterns, and detection statistics for individual cats.'
+      properties:
+        average_confidence:
+          default: 0.0
+          description: Average detection confidence score for this cat
+          example: 0.87
+          maximum: 1.0
+          minimum: 0.0
+          title: Average Confidence
+          type: number
+        breed:
+          anyOf:
+          - maxLength: 50
+            type: string
+          - type: 'null'
+          description: Breed of the cat (if known)
+          example: Maine Coon
+          title: Breed
+        color:
+          anyOf:
+          - maxLength: 100
+            type: string
+          - type: 'null'
+          description: Primary color or color pattern of the cat
+          example: Orange tabby with white chest
+          title: Color
+        created_timestamp:
+          description: When this cat profile was first created
+          example: '2023-12-01T14:30:22.123456'
+          format: date-time
+          title: Created Timestamp
+          type: string
+        description:
+          anyOf:
+          - maxLength: 500
+            type: string
+          - type: 'null'
+          description: General description or notes about the cat
+          example: A friendly orange tabby who loves to play with string toys
+          title: Description
+        favorite_activities:
+          description: List of activities this cat is commonly observed doing
+          items:
+            $ref: '#/components/schemas/CatActivity'
+          title: Favorite Activities
+          type: array
+        last_seen_timestamp:
+          anyOf:
+          - format: date-time
+            type: string
+          - type: 'null'
+          description: When this cat was last detected in any camera
+          example: '2023-12-01T16:45:30.789012'
+          title: Last Seen Timestamp
+        name:
+          description: Unique name identifier for the cat
+          example: Whiskers
+          maxLength: 50
+          minLength: 1
+          title: Name
+          type: string
+        preferred_locations:
+          description: Camera/image sources where this cat is commonly seen
+          example:
+          - living_room_camera
+          - kitchen_camera
+          items:
+            type: string
+          title: Preferred Locations
+          type: array
+        total_detections:
+          default: 0
+          description: Total number of times this cat has been detected
+          example: 127
+          minimum: 0.0
+          title: Total Detections
+          type: integer
+      required:
+      - name
+      - created_timestamp
+      title: CatProfile
+      type: object
+    Detection:
+      description: 'Represents a single object detection result from ML model.
+
+
+        Contains the detected object''s class information, confidence score,
+
+        and bounding box coordinates.'
+      properties:
+        bounding_box:
+          additionalProperties:
+            type: number
+          description: Bounding box coordinates in pixels
+          example:
+            height: 249.9
+            width: 200.3
+            x1: 100.5
+            x2: 300.8
+            y1: 150.2
+            y2: 400.1
+          title: Bounding Box
+          type: object
+        class_id:
+          description: YOLO class ID for the detected object
+          example: 15
+          minimum: 0.0
+          title: Class Id
+          type: integer
+        class_name:
+          description: Human-readable name of the detected class
+          example: cat
+          title: Class Name
+          type: string
+        confidence:
+          description: Detection confidence score between 0.0 and 1.0
+          example: 0.85
+          maximum: 1.0
+          minimum: 0.0
+          title: Confidence
+          type: number
+      required:
+      - class_id
+      - class_name
+      - confidence
+      - bounding_box
+      title: Detection
+      type: object
+    FeedbackAnnotation:
+      description: 'User-provided annotation for training data.
+
+
+        Contains corrections, additions, or confirmations of detection results
+
+        along with optional cat identification and activity feedback.'
+      properties:
+        activity_confidence:
+          anyOf:
+          - maximum: 1.0
+            minimum: 0.0
+            type: number
+          - type: 'null'
+          description: User's confidence in their activity assessment
+          example: 0.9
+          title: Activity Confidence
+        activity_feedback:
+          anyOf:
+          - maxLength: 500
+            type: string
+          - type: 'null'
+          description: User's textual feedback about the cat's activity
+          example: The cat appears to be playing with a toy mouse
+          title: Activity Feedback
+        bounding_box:
+          $ref: '#/components/schemas/BoundingBox'
+          description: Corrected or confirmed bounding box coordinates
+        cat_name:
+          anyOf:
+          - maxLength: 50
+            type: string
+          - type: 'null'
+          description: Optional name for the identified cat
+          example: Whiskers
+          title: Cat Name
+        class_id:
+          description: YOLO class ID for the annotated object
+          example: 15
+          minimum: 0.0
+          title: Class Id
+          type: integer
+        class_name:
+          description: Human-readable name of the annotated class
+          example: cat
+          title: Class Name
+          type: string
+        confidence:
+          anyOf:
+          - maximum: 1.0
+            minimum: 0.0
+            type: number
+          - type: 'null'
+          description: User-provided confidence rating for this annotation
+          example: 0.95
+          title: Confidence
+        correct_activity:
+          anyOf:
+          - $ref: '#/components/schemas/CatActivity'
+          - type: 'null'
+          description: User's correction of the detected activity
+      required:
+      - class_id
+      - class_name
+      - bounding_box
+      title: FeedbackAnnotation
+      type: object
+    HTTPValidationError:
+      properties:
+        detail:
+          items:
+            $ref: '#/components/schemas/ValidationError'
+          title: Detail
+          type: array
+      title: HTTPValidationError
+      type: object
+    ImageFeedback:
+      description: 'Feedback data for a single detection image.
+
+
+        Contains the original detection results along with user corrections,
+
+        additions, and annotations for model improvement.'
+      properties:
+        feedback_type:
+          description: Type of feedback being provided
+          example: correction
+          pattern: ^(correction|addition|confirmation|rejection)$
+          title: Feedback Type
+          type: string
+        image_filename:
+          description: Name of the image file being annotated
+          example: camera1_20231201_143022_activity_detections.jpg
+          title: Image Filename
+          type: string
+        image_path:
+          description: Full path to the image file
+          example: /detections/camera1_20231201_143022_activity_detections.jpg
+          title: Image Path
+          type: string
+        notes:
+          anyOf:
+          - maxLength: 1000
+            type: string
+          - type: 'null'
+          description: Additional notes or comments from the user
+          example: The second cat was missed by the detector - it's partially hidden
+            behind the first cat
+          title: Notes
+        original_detections:
+          description: Original detection results from the ML model
+          items:
+            $ref: '#/components/schemas/Detection'
+          title: Original Detections
+          type: array
+        timestamp:
+          description: When this feedback was submitted
+          example: '2023-12-01T14:30:22.123456'
+          format: date-time
+          title: Timestamp
+          type: string
+        user_annotations:
+          description: User-provided corrections and annotations
+          items:
+            $ref: '#/components/schemas/FeedbackAnnotation'
+          title: User Annotations
+          type: array
+        user_id:
+          anyOf:
+          - maxLength: 50
+            type: string
+          - type: 'null'
+          default: anonymous
+          description: Identifier for the user providing feedback
+          example: user123
+          title: User Id
+      required:
+      - image_filename
+      - image_path
+      - original_detections
+      - user_annotations
+      - feedback_type
+      - timestamp
+      title: ImageFeedback
+      type: object
+    ModelRetrainRequest:
+      description: 'Request model for retraining with custom model name.
+
+
+        Used to initiate model retraining with feedback data and specify
+
+        a custom name for the resulting model.'
+      properties:
+        custom_model_name:
+          anyOf:
+          - maxLength: 100
+            pattern: ^[a-zA-Z0-9_-]+$
+            type: string
+          - type: 'null'
+          description: Custom name for the retrained model
+          example: retrained_model_v2
+          title: Custom Model Name
+        description:
+          anyOf:
+          - maxLength: 500
+            type: string
+          - type: 'null'
+          description: Optional description of the retraining process
+          example: Retrained with 500 new annotations focusing on sleeping cats
+          title: Description
+      title: ModelRetrainRequest
+      type: object
+    ValidationError:
+      properties:
+        loc:
+          items:
+            anyOf:
+            - type: string
+            - type: integer
+          title: Location
+          type: array
+        msg:
+          title: Message
+          type: string
+        type:
+          title: Error Type
+          type: string
+      required:
+      - loc
+      - msg
+      - type
+      title: ValidationError
+      type: object
+info:
+  description: "\n    A comprehensive FastAPI-based system for monitoring cats using\
+    \ YOLO object detection and activity analysis.    "
+  license:
+    name: MIT License
+    url: https://github.com/biancarosa/cat-activities-monitor/blob/main/LICENSE
+  title: Cat Activities Monitor API
+  version: 2.0.0
+openapi: 3.1.0
+paths:
+  /activities:
+    get:
+      description: Get a list of all available activity types that can be detected
+        and tracked.
+      operationId: list_activities_activities_get
+      responses:
+        '200':
+          content:
+            application/json:
+              example:
+                activities:
+                - description: Cat is resting or sleeping
+                  id: sleeping
+                  name: Sleeping
+                - description: Cat is eating food
+                  id: eating
+                  name: Eating
+                - description: Cat is playing or being active
+                  id: playing
+                  name: Playing
+                - description: Cat is grooming itself
+                  id: grooming
+                  name: Grooming
+                total: 4
+              schema: {}
+          description: Activity types retrieved successfully
+        '500':
+          description: Internal server error
+      summary: List Available Activities
+      tags:
+      - activities
+  /activities/history/{camera_name}:
+    get:
+      description: Get activity history for a specific camera with optional date filtering.
+      operationId: get_camera_activity_history_activities_history__camera_name__get
+      parameters:
+      - in: path
+        name: camera_name
+        required: true
+        schema:
+          title: Camera Name
+          type: string
+      - description: Start date (YYYY-MM-DD)
+        in: query
+        name: start_date
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          description: Start date (YYYY-MM-DD)
+          title: Start Date
+      - description: End date (YYYY-MM-DD)
+        in: query
+        name: end_date
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          description: End date (YYYY-MM-DD)
+          title: End Date
+      - description: Maximum number of records to return
+        in: query
+        name: limit
+        required: false
+        schema:
+          default: 100
+          description: Maximum number of records to return
+          title: Limit
+          type: integer
+      responses:
+        '200':
+          content:
+            application/json:
+              example:
+                camera_name: living_room
+                date_range:
+                  end: '2024-01-15T23:59:59Z'
+                  start: '2024-01-15T00:00:00Z'
+                detections:
+                - bounding_boxes:
+                  - class_id: 15
+                    confidence: 0.89
+                    x1: 100.5
+                    x2: 300.8
+                    y1: 150.2
+                    y2: 400.1
+                  confidence: 0.89
+                  detection_count: 2
+                  id: 123
+                  timestamp: '2024-01-15T14:30:00Z'
+                total_detections: 25
+              schema: {}
+          description: Activity history retrieved successfully
+        '404':
+          description: Camera not found
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+        '500':
+          description: Internal server error
+      summary: Get Camera Activity History
+      tags:
+      - activities
+  /activities/summary:
+    get:
+      description: Get a summary of recent activity across all cameras and cats.
+      operationId: get_activity_summary_activities_summary_get
+      responses:
+        '200':
+          content:
+            application/json:
+              example:
+                by_activity:
+                - activity: sleeping
+                  count: 20
+                  percentage: 44.4
+                - activity: eating
+                  count: 15
+                  percentage: 33.3
+                - activity: playing
+                  count: 10
+                  percentage: 22.2
+                by_camera:
+                - camera_name: living_room
+                  detections_today: 25
+                  last_detection: '2024-01-15T14:30:00Z'
+                  most_common_activity: sleeping
+                summary:
+                  active_cameras: 3
+                  cats_detected: 2
+                  last_detection: '2024-01-15T14:30:00Z'
+                  most_active_camera: living_room
+                  most_common_activity: sleeping
+                  total_detections_today: 45
+              schema: {}
+          description: Activity summary retrieved successfully
+        '500':
+          description: Internal server error
+      summary: Get Activity Summary
+      tags:
+      - activities
+  /api:
+    get:
+      description: Returns basic information about the Cat Activities Monitor API
+        including version and available endpoints.
+      operationId: api_root_api_get
+      responses:
+        '200':
+          content:
+            application/json:
+              example:
+                description: AI-powered cat monitoring system with YOLO object detection
+                  and activity analysis
+                endpoints:
+                  activities: /activities/summary
+                  cameras: /cameras
+                  cats: /cats
+                  detections: /detections/images
+                  feedback: /feedback
+                  system: /system/status
+                  training: /training/status
+                service: Cat Activities Monitor API
+                version: 2.0.0
+              schema: {}
+          description: API information retrieved successfully
+      summary: Get API Information
+      tags:
+      - main
+  /cameras:
+    get:
+      description: Get a list of all configured camera/image sources with their settings
+        and status.
+      operationId: list_cameras_cameras_get
+      responses:
+        '200':
+          content:
+            application/json:
+              example:
+                cameras:
+                - enabled: true
+                  interval_seconds: 30
+                  name: living_room
+                  url: http://camera1.local/snapshot.jpg
+                - enabled: false
+                  interval_seconds: 60
+                  name: kitchen
+                  url: http://camera2.local/snapshot.jpg
+                enabled: 1
+                total: 2
+              schema: {}
+          description: Camera sources retrieved successfully
+        '404':
+          description: No configuration loaded
+        '500':
+          description: Internal server error
+      summary: List Camera Sources
+      tags:
+      - cameras
+  /cameras/fetch-all:
+    post:
+      description: Fetch and analyze images from all enabled camera sources concurrently.
+      operationId: fetch_all_cameras_cameras_fetch_all_post
+      responses:
+        '200':
+          content:
+            application/json:
+              example:
+                enabled_cameras: 4
+                failed: 1
+                message: 'Fetch completed: 3/4 successful'
+                results:
+                - camera_name: living_room
+                  detection:
+                    count: 2
+                    detected: true
+                  success: true
+                - camera_name: kitchen
+                  error: Connection timeout
+                  success: false
+                successful: 3
+                total_cameras: 4
+              schema: {}
+          description: Camera images fetch completed
+        '404':
+          description: No configuration loaded
+        '500':
+          description: Internal server error
+      summary: Fetch All Camera Images
+      tags:
+      - cameras
+  /cameras/{camera_name}/fetch:
+    post:
+      description: Fetch and analyze a specific camera image by name. This will download
+        the image, run YOLO detection, and return the results.
+      operationId: fetch_camera_image_cameras__camera_name__fetch_post
+      parameters:
+      - in: path
+        name: camera_name
+        required: true
+        schema:
+          title: Camera Name
+          type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              example:
+                camera_name: living_room
+                detection:
+                  activities: []
+                  confidence: 0.89
+                  count: 2
+                  detected: true
+                  detections:
+                  - bounding_box:
+                      height: 249.9
+                      width: 200.3
+                      x1: 100.5
+                      x2: 300.8
+                      y1: 150.2
+                      y2: 400.1
+                    class_id: 15
+                    confidence: 0.89
+                  total_animals: 2
+                message: Successfully fetched 'living_room'
+                success: true
+                url: http://camera1.local/snapshot.jpg
+              schema: {}
+          description: Camera image fetched and analyzed successfully
+        '404':
+          description: Camera source not found or no configuration loaded
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+        '500':
+          description: Failed to fetch or analyze camera image
+      summary: Fetch Specific Camera Image
+      tags:
+      - cameras
+  /cats:
+    get:
+      description: List all cat profiles.
+      operationId: list_cat_profiles_cats_get
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: {}
+          description: Successful Response
+      summary: List Cat Profiles
+      tags:
+      - cats
+    post:
+      description: Create a new cat profile.
+      operationId: create_cat_profile_cats_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CatProfile'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: {}
+          description: Successful Response
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      summary: Create Cat Profile
+      tags:
+      - cats
+  /cats/{cat_name}:
+    delete:
+      description: Delete a cat profile.
+      operationId: delete_cat_profile_cats__cat_name__delete
+      parameters:
+      - in: path
+        name: cat_name
+        required: true
+        schema:
+          title: Cat Name
+          type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: {}
+          description: Successful Response
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      summary: Delete Cat Profile
+      tags:
+      - cats
+    get:
+      description: Get detailed information about a specific cat.
+      operationId: get_cat_profile_cats__cat_name__get
+      parameters:
+      - in: path
+        name: cat_name
+        required: true
+        schema:
+          title: Cat Name
+          type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: {}
+          description: Successful Response
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      summary: Get Cat Profile
+      tags:
+      - cats
+    put:
+      description: Update an existing cat profile.
+      operationId: update_cat_profile_cats__cat_name__put
+      parameters:
+      - in: path
+        name: cat_name
+        required: true
+        schema:
+          title: Cat Name
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CatProfile'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: {}
+          description: Successful Response
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      summary: Update Cat Profile
+      tags:
+      - cats
+  /cats/{cat_name}/activity-history:
+    get:
+      description: Get activity history for a specific named cat.
+      operationId: get_cat_activity_history_cats__cat_name__activity_history_get
+      parameters:
+      - in: path
+        name: cat_name
+        required: true
+        schema:
+          title: Cat Name
+          type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: {}
+          description: Successful Response
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      summary: Get Cat Activity History
+      tags:
+      - cats
+  /detections/classes:
+    get:
+      description: Get list of all available YOLO detection classes that can be detected.
+      operationId: get_available_classes_detections_classes_get
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: {}
+          description: List of available detection classes
+      summary: Get Available Detection Classes
+      tags:
+      - detections
+  /detections/database/cleanup:
+    post:
+      description: Clean up old detection results from database, keeping only recent
+        records.
+      operationId: cleanup_detection_database_detections_database_cleanup_post
+      parameters:
+      - in: query
+        name: keep_days
+        required: false
+        schema:
+          default: 7
+          title: Keep Days
+          type: integer
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: {}
+          description: Database cleanup results
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      summary: Clean Up Detection Database
+      tags:
+      - detections
+  /detections/database/status:
+    get:
+      description: Get detection database status and statistics including recent activity
+        and detection counts.
+      operationId: get_detection_database_status_detections_database_status_get
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: {}
+          description: Detection database status and statistics
+      summary: Get Detection Database Status
+      tags:
+      - detections
+  /detections/images:
+    get:
+      description: Get list of detection images with metadata and annotation information.
+      operationId: get_detection_images_detections_images_get
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: {}
+          description: List of detection images with metadata
+      summary: List Detection Images
+      tags:
+      - detections
+  /detections/images/reprocess-all:
+    post:
+      description: Reprocess all detection images with current ML model and update
+        database with new results.
+      operationId: reprocess_all_detection_images_detections_images_reprocess_all_post
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: {}
+          description: Bulk reprocessing results
+      summary: Reprocess All Detection Images
+      tags:
+      - detections
+  /detections/images/{image_filename}/annotations:
+    get:
+      description: Get detailed annotations and detection data for a specific detection
+        image.
+      operationId: get_image_annotations_detections_images__image_filename__annotations_get
+      parameters:
+      - in: path
+        name: image_filename
+        required: true
+        schema:
+          title: Image Filename
+          type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: {}
+          description: Image annotations and detection details
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      summary: Get Image Annotations
+      tags:
+      - detections
+  /detections/images/{image_filename}/reprocess:
+    post:
+      description: Reprocess a detection image with current ML model and update database
+        with new results.
+      operationId: reprocess_detection_image_detections_images__image_filename__reprocess_post
+      parameters:
+      - in: path
+        name: image_filename
+        required: true
+        schema:
+          title: Image Filename
+          type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: {}
+          description: Reprocessed detection results
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      summary: Reprocess Detection Image
+      tags:
+      - detections
+  /detections/status:
+    get:
+      description: Get current detection status across all camera sources.
+      operationId: get_detection_status_detections_status_get
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: {}
+          description: Current detection status for all sources
+      summary: Get Detection Status
+      tags:
+      - detections
+  /feedback:
+    get:
+      description: List all submitted feedback for review.
+      operationId: list_feedback_feedback_get
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: {}
+          description: Successful Response
+      summary: List Feedback
+      tags:
+      - feedback
+    post:
+      description: Submit feedback for a detection image to improve the model.
+      operationId: submit_feedback_feedback_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ImageFeedback'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: {}
+          description: Successful Response
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      summary: Submit Feedback
+      tags:
+      - feedback
+  /feedback/{feedback_id}:
+    delete:
+      description: Delete feedback entry.
+      operationId: delete_feedback_feedback__feedback_id__delete
+      parameters:
+      - in: path
+        name: feedback_id
+        required: true
+        schema:
+          title: Feedback Id
+          type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: {}
+          description: Successful Response
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      summary: Delete Feedback
+      tags:
+      - feedback
+    get:
+      description: Get detailed feedback information.
+      operationId: get_feedback_details_feedback__feedback_id__get
+      parameters:
+      - in: path
+        name: feedback_id
+        required: true
+        schema:
+          title: Feedback Id
+          type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: {}
+          description: Successful Response
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      summary: Get Feedback Details
+      tags:
+      - feedback
+  /system/config:
+    get:
+      description: Retrieve the current system configuration including camera sources,
+        YOLO settings, and detection parameters.
+      operationId: get_current_config_system_config_get
+      responses:
+        '200':
+          content:
+            application/json:
+              example:
+                global_:
+                  default_interval_seconds: 60
+                  max_concurrent_fetches: 3
+                  ml_model_config:
+                    confidence_threshold: 0.5
+                    model: yolo11n.pt
+                    target_classes:
+                    - 15
+                    - 16
+                  timeout_seconds: 30
+                images:
+                - enabled: true
+                  interval_seconds: 30
+                  name: living_room
+                  url: http://camera1.local/snapshot.jpg
+              schema: {}
+          description: Configuration retrieved successfully
+        '404':
+          description: No configuration loaded
+        '500':
+          description: Internal server error
+      summary: Get Current Configuration
+      tags:
+      - system
+  /system/config/reload:
+    post:
+      description: Reload the system configuration from the config file.
+      operationId: reload_configuration_system_config_reload_post
+      responses:
+        '200':
+          content:
+            application/json:
+              example:
+                enabled_images: 3
+                message: Configuration reloaded successfully
+                ml_model: yolo11n.pt
+                total_images: 5
+              schema: {}
+          description: Configuration reloaded successfully
+        '500':
+          description: Failed to reload configuration
+      summary: Reload Configuration
+      tags:
+      - system
+  /system/health:
+    get:
+      description: Simple health check endpoint to verify the API is responding.
+      operationId: health_check_system_health_get
+      responses:
+        '200':
+          content:
+            application/json:
+              example:
+                status: healthy
+                timestamp: '2024-01-15T10:30:00Z'
+              schema: {}
+          description: Service is healthy
+      summary: Health Check
+      tags:
+      - system
+  /system/logs:
+    get:
+      description: Retrieve recent log entries from the application log file.
+      operationId: get_recent_logs_system_logs_get
+      parameters:
+      - in: query
+        name: lines
+        required: false
+        schema:
+          default: 100
+          title: Lines
+          type: integer
+      responses:
+        '200':
+          content:
+            application/json:
+              example:
+                logs:
+                - 2024-01-15 10:30:00 - INFO - Background image fetcher started
+                - '2024-01-15 10:29:45 - INFO - ML model loaded: yolo11n.pt'
+                total_lines: 2
+              schema: {}
+          description: Log entries retrieved successfully
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+        '500':
+          description: Failed to read log file
+      summary: Get Recent Logs
+      tags:
+      - system
+  /system/status:
+    get:
+      description: Get comprehensive system status including configuration, services,
+        and runtime information.
+      operationId: get_system_status_system_status_get
+      responses:
+        '200':
+          content:
+            application/json:
+              example:
+                background_task_running: true
+                configuration_loaded: true
+                database_connected: true
+                enabled_cameras: 3
+                ml_model_loaded: true
+                status: running
+                total_cameras: 5
+                uptime: 2h 15m 30s
+                version: 2.0.0
+              schema: {}
+          description: System status retrieved successfully
+        '500':
+          description: Internal server error
+      summary: Get System Status
+      tags:
+      - system
+  /training/export:
+    post:
+      description: Export feedback data in YOLO format that preserves COCO classes
+        and adds metadata.
+      operationId: export_training_data_training_export_post
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: {}
+          description: Successful Response
+      summary: Export Training Data
+      tags:
+      - training
+  /training/retrain:
+    post:
+      description: Model retraining that preserves COCO classes and adds cat identification
+        capabilities through fine-tuning.
+      operationId: retrain_model_training_retrain_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ModelRetrainRequest'
+              default: {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: {}
+          description: Successful Response
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      summary: Retrain Model
+      tags:
+      - training
+  /training/status:
+    get:
+      description: Get training status and available models.
+      operationId: get_training_status_training_status_get
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: {}
+          description: Successful Response
+      summary: Get Training Status
+      tags:
+      - training
+  /training/switch-model:
+    post:
+      description: Switch the current ML model to the specified model filename.
+      operationId: switch_model_training_switch_model_post
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: {}
+          description: Successful Response
+      summary: Switch Model
+      tags:
+      - training
+servers:
+- description: Development server
+  url: http://localhost:8000
+- description: Production server
+  url: https://your-domain.com
+tags:
+- description: Main application endpoints including root interface and API information.
+  name: main
+- description: System administration endpoints for status, configuration, health checks,
+    and logs.
+  name: system
+- description: Camera and image source management endpoints for listing cameras and
+    fetching images.
+  name: cameras
+- description: Detection results and analysis endpoints for retrieving detection data
+    and images.
+  name: detections
+- description: Activity analysis endpoints for tracking and summarizing cat activities
+    across cameras.
+  name: activities
+- description: Feedback system endpoints for submitting corrections and improvements
+    to enhance model accuracy.
+  name: feedback
+- description: Model training and management endpoints for custom model creation and
+    switching between models.
+  name: training
+- description: Cat profile management endpoints for creating, updating, and tracking
+    individual cats.
+  name: cats

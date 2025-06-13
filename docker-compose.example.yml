@@ -1,0 +1,50 @@
+services:
+  # PostgreSQL Database. If you have a local postgres instance, you can it instead - just replace the variables on the API service and remove this service.
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: cats_monitor
+      POSTGRES_USER: db_user
+      POSTGRES_PASSWORD: db_password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U db_user -d cat_monitor"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # API Backend
+  api:
+    image: biancarosa/cat-activities-monitor-api:latest
+    environment:
+      - DATABASE_URL=postgresql://db_user:db_password@postgres:5432/cat_monitor
+      - POSTGRES_HOST=postgres
+      - POSTGRES_DB=cats_monitor
+      - POSTGRES_USER=db_user
+      - POSTGRES_PASSWORD=db_password
+      - POSTGRES_PORT=5432
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ml_models:/app/ml_models
+      - ./config.yaml:/app/config.yaml
+
+  # Frontend
+  frontend:
+    image: biancarosa/cat-activities-monitor-frontend:latest
+    environment:
+      - NEXT_PUBLIC_API_URL=http://<your-server-ip-address>:8000
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api
+
+volumes:
+  postgres_data:
+  ml_models:

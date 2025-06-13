@@ -1,0 +1,62 @@
+# Cat Activities Monitor Configuration Template
+# Copy this file to config.yaml and customize with your camera URLs
+
+app:
+  log_level: "INFO"  # DEBUG, INFO, WARNING, ERROR
+  
+images:
+  - name: "living-room"
+    url: "http://YOUR_CAMERA_IP:PORT/snapshot/living-room.jpg"
+    interval_seconds: 30
+    enabled: true
+    
+  - name: "bedroom" 
+    url: "http://YOUR_CAMERA_IP:PORT/snapshot/bedroom.jpg"
+    interval_seconds: 45
+    enabled: true
+
+# Global settings with advanced YOLO configuration
+# Note: These values are already set as defaults in the code
+# You only need to override them here if you want different values
+global:
+  default_interval_seconds: 60
+  max_concurrent_fetches: 3
+  timeout_seconds: 30
+  
+  # Advanced YOLO Configuration (optimized for multi-cat detection)
+  ml_model_config:
+    # Model Selection (choose based on your needs)
+    model: "ml_models/yolo11l.pt"  # Updated to use ml_models directory for ML model files
+    # Options:
+    # YOLOv8: yolov8n/s/m/l/x.pt (current generation)
+    # YOLOv10: yolov10n/s/m/l/x.pt (more efficient, recommended)
+    # YOLOv11: yolo11n/s/m/l/x.pt (latest, best performance)
+    # n=nano(fastest), s=small(balanced), m=medium(accurate), l/x=large(best)
+    
+    # Detection Thresholds (Optimized for multi-cat detection)
+    confidence_threshold: 0.01   # Ultra-sensitive for detecting both cats (0.0-1.0)
+    iou_threshold: 0.1          # Very low IoU threshold to allow overlapping detections (0.0-1.0)
+    
+    # Performance Settings
+    max_detections: 1000        # High max detections to catch multiple cats
+    image_size: 1280            # Input size (320, 640, 1280) - larger = more accurate
+    
+    # Target Classes (COCO dataset class IDs)
+    target_classes: [15, 16]   # 15=cat, 16=dog (YOLO sometimes confuses cats/dogs)
+    # Examples:
+    # [15] = cats only (but may miss cats detected as dogs)
+    # [15, 16] = cats and dogs (recommended for better cat detection)
+    # [14, 15, 16, 17, 18, 19, 20, 21, 22, 23] = all animals
+    # [0] = people only
+    
+    # Image Saving (for debugging/analysis)
+    save_detection_images: true          # Save images with bounding boxes
+    detection_image_path: "./detections" # Where to save detection images
+    
+    # Change Detection (Smart Image Saving)
+    change_detection:
+      enabled: true                      # Enable smart change detection
+      similarity_threshold: 0.85         # 0.0-1.0, higher = more similar required to skip
+      detection_change_threshold: 0.3    # Minimum confidence change to trigger save
+      position_change_threshold: 50      # Minimum pixel movement to trigger save
+      activity_change_triggers: true     # Save when cat activity changes 

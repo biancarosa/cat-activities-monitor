@@ -1,0 +1,1875 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Cat Activities Monitor API",
+    "description": "\n    A comprehensive FastAPI-based system for monitoring cats using YOLO object detection and activity analysis.    ",
+    "license": {
+      "name": "MIT License",
+      "url": "https://github.com/biancarosa/cat-activities-monitor/blob/main/LICENSE"
+    },
+    "version": "2.0.0"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8000",
+      "description": "Development server"
+    },
+    {
+      "url": "https://your-domain.com",
+      "description": "Production server"
+    }
+  ],
+  "paths": {
+    "/api": {
+      "get": {
+        "tags": [
+          "main"
+        ],
+        "summary": "Get API Information",
+        "description": "Returns basic information about the Cat Activities Monitor API including version and available endpoints.",
+        "operationId": "api_root_api_get",
+        "responses": {
+          "200": {
+            "description": "API information retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {},
+                "example": {
+                  "service": "Cat Activities Monitor API",
+                  "version": "2.0.0",
+                  "description": "AI-powered cat monitoring system with YOLO object detection and activity analysis",
+                  "endpoints": {
+                    "system": "/system/status",
+                    "cameras": "/cameras",
+                    "detections": "/detections/images",
+                    "activities": "/activities/summary",
+                    "feedback": "/feedback",
+                    "training": "/training/status",
+                    "cats": "/cats"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/system/status": {
+      "get": {
+        "tags": [
+          "system"
+        ],
+        "summary": "Get System Status",
+        "description": "Get comprehensive system status including configuration, services, and runtime information.",
+        "operationId": "get_system_status_system_status_get",
+        "responses": {
+          "200": {
+            "description": "System status retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {},
+                "example": {
+                  "status": "running",
+                  "version": "2.0.0",
+                  "uptime": "2h 15m 30s",
+                  "configuration_loaded": true,
+                  "background_task_running": true,
+                  "database_connected": true,
+                  "ml_model_loaded": true,
+                  "enabled_cameras": 3,
+                  "total_cameras": 5
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        }
+      }
+    },
+    "/system/health": {
+      "get": {
+        "tags": [
+          "system"
+        ],
+        "summary": "Health Check",
+        "description": "Simple health check endpoint to verify the API is responding.",
+        "operationId": "health_check_system_health_get",
+        "responses": {
+          "200": {
+            "description": "Service is healthy",
+            "content": {
+              "application/json": {
+                "schema": {},
+                "example": {
+                  "status": "healthy",
+                  "timestamp": "2024-01-15T10:30:00Z"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/system/config": {
+      "get": {
+        "tags": [
+          "system"
+        ],
+        "summary": "Get Current Configuration",
+        "description": "Retrieve the current system configuration including camera sources, YOLO settings, and detection parameters.",
+        "operationId": "get_current_config_system_config_get",
+        "responses": {
+          "200": {
+            "description": "Configuration retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {},
+                "example": {
+                  "global_": {
+                    "ml_model_config": {
+                      "model": "yolo11n.pt",
+                      "confidence_threshold": 0.5,
+                      "target_classes": [
+                        15,
+                        16
+                      ]
+                    },
+                    "default_interval_seconds": 60,
+                    "max_concurrent_fetches": 3,
+                    "timeout_seconds": 30
+                  },
+                  "images": [
+                    {
+                      "name": "living_room",
+                      "url": "http://camera1.local/snapshot.jpg",
+                      "enabled": true,
+                      "interval_seconds": 30
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No configuration loaded"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        }
+      }
+    },
+    "/system/config/reload": {
+      "post": {
+        "tags": [
+          "system"
+        ],
+        "summary": "Reload Configuration",
+        "description": "Reload the system configuration from the config file.",
+        "operationId": "reload_configuration_system_config_reload_post",
+        "responses": {
+          "200": {
+            "description": "Configuration reloaded successfully",
+            "content": {
+              "application/json": {
+                "schema": {},
+                "example": {
+                  "message": "Configuration reloaded successfully",
+                  "total_images": 5,
+                  "enabled_images": 3,
+                  "ml_model": "yolo11n.pt"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Failed to reload configuration"
+          }
+        }
+      }
+    },
+    "/system/logs": {
+      "get": {
+        "tags": [
+          "system"
+        ],
+        "summary": "Get Recent Logs",
+        "description": "Retrieve recent log entries from the application log file.",
+        "operationId": "get_recent_logs_system_logs_get",
+        "parameters": [
+          {
+            "name": "lines",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 100,
+              "title": "Lines"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Log entries retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {},
+                "example": {
+                  "logs": [
+                    "2024-01-15 10:30:00 - INFO - Background image fetcher started",
+                    "2024-01-15 10:29:45 - INFO - ML model loaded: yolo11n.pt"
+                  ],
+                  "total_lines": 2
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Failed to read log file"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/cameras": {
+      "get": {
+        "tags": [
+          "cameras"
+        ],
+        "summary": "List Camera Sources",
+        "description": "Get a list of all configured camera/image sources with their settings and status.",
+        "operationId": "list_cameras_cameras_get",
+        "responses": {
+          "200": {
+            "description": "Camera sources retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {},
+                "example": {
+                  "cameras": [
+                    {
+                      "name": "living_room",
+                      "url": "http://camera1.local/snapshot.jpg",
+                      "interval_seconds": 30,
+                      "enabled": true
+                    },
+                    {
+                      "name": "kitchen",
+                      "url": "http://camera2.local/snapshot.jpg",
+                      "interval_seconds": 60,
+                      "enabled": false
+                    }
+                  ],
+                  "total": 2,
+                  "enabled": 1
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No configuration loaded"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        }
+      }
+    },
+    "/cameras/{camera_name}/fetch": {
+      "post": {
+        "tags": [
+          "cameras"
+        ],
+        "summary": "Fetch Specific Camera Image",
+        "description": "Fetch and analyze a specific camera image by name. This will download the image, run YOLO detection, and return the results.",
+        "operationId": "fetch_camera_image_cameras__camera_name__fetch_post",
+        "parameters": [
+          {
+            "name": "camera_name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Camera Name"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Camera image fetched and analyzed successfully",
+            "content": {
+              "application/json": {
+                "schema": {},
+                "example": {
+                  "message": "Successfully fetched 'living_room'",
+                  "camera_name": "living_room",
+                  "url": "http://camera1.local/snapshot.jpg",
+                  "success": true,
+                  "detection": {
+                    "detected": true,
+                    "confidence": 0.89,
+                    "count": 2,
+                    "detections": [
+                      {
+                        "class_id": 15,
+                        "confidence": 0.89,
+                        "bounding_box": {
+                          "x1": 100.5,
+                          "y1": 150.2,
+                          "x2": 300.8,
+                          "y2": 400.1,
+                          "width": 200.3,
+                          "height": 249.9
+                        }
+                      }
+                    ],
+                    "total_animals": 2,
+                    "activities": []
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Camera source not found or no configuration loaded"
+          },
+          "500": {
+            "description": "Failed to fetch or analyze camera image"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/cameras/fetch-all": {
+      "post": {
+        "tags": [
+          "cameras"
+        ],
+        "summary": "Fetch All Camera Images",
+        "description": "Fetch and analyze images from all enabled camera sources concurrently.",
+        "operationId": "fetch_all_cameras_cameras_fetch_all_post",
+        "responses": {
+          "200": {
+            "description": "Camera images fetch completed",
+            "content": {
+              "application/json": {
+                "schema": {},
+                "example": {
+                  "message": "Fetch completed: 3/4 successful",
+                  "total_cameras": 4,
+                  "enabled_cameras": 4,
+                  "successful": 3,
+                  "failed": 1,
+                  "results": [
+                    {
+                      "camera_name": "living_room",
+                      "success": true,
+                      "detection": {
+                        "detected": true,
+                        "count": 2
+                      }
+                    },
+                    {
+                      "camera_name": "kitchen",
+                      "success": false,
+                      "error": "Connection timeout"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No configuration loaded"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        }
+      }
+    },
+    "/detections/database/status": {
+      "get": {
+        "tags": [
+          "detections"
+        ],
+        "summary": "Get Detection Database Status",
+        "description": "Get detection database status and statistics including recent activity and detection counts.",
+        "operationId": "get_detection_database_status_detections_database_status_get",
+        "responses": {
+          "200": {
+            "description": "Detection database status and statistics",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/detections/database/cleanup": {
+      "post": {
+        "tags": [
+          "detections"
+        ],
+        "summary": "Clean Up Detection Database",
+        "description": "Clean up old detection results from database, keeping only recent records.",
+        "operationId": "cleanup_detection_database_detections_database_cleanup_post",
+        "parameters": [
+          {
+            "name": "keep_days",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 7,
+              "title": "Keep Days"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Database cleanup results",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/detections/images": {
+      "get": {
+        "tags": [
+          "detections"
+        ],
+        "summary": "List Detection Images",
+        "description": "Get list of detection images with metadata and annotation information.",
+        "operationId": "get_detection_images_detections_images_get",
+        "responses": {
+          "200": {
+            "description": "List of detection images with metadata",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/detections/images/{image_filename}/annotations": {
+      "get": {
+        "tags": [
+          "detections"
+        ],
+        "summary": "Get Image Annotations",
+        "description": "Get detailed annotations and detection data for a specific detection image.",
+        "operationId": "get_image_annotations_detections_images__image_filename__annotations_get",
+        "parameters": [
+          {
+            "name": "image_filename",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Image Filename"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Image annotations and detection details",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/detections/status": {
+      "get": {
+        "tags": [
+          "detections"
+        ],
+        "summary": "Get Detection Status",
+        "description": "Get current detection status across all camera sources.",
+        "operationId": "get_detection_status_detections_status_get",
+        "responses": {
+          "200": {
+            "description": "Current detection status for all sources",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/detections/classes": {
+      "get": {
+        "tags": [
+          "detections"
+        ],
+        "summary": "Get Available Detection Classes",
+        "description": "Get list of all available YOLO detection classes that can be detected.",
+        "operationId": "get_available_classes_detections_classes_get",
+        "responses": {
+          "200": {
+            "description": "List of available detection classes",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/detections/images/{image_filename}/reprocess": {
+      "post": {
+        "tags": [
+          "detections"
+        ],
+        "summary": "Reprocess Detection Image",
+        "description": "Reprocess a detection image with current ML model and update database with new results.",
+        "operationId": "reprocess_detection_image_detections_images__image_filename__reprocess_post",
+        "parameters": [
+          {
+            "name": "image_filename",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Image Filename"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Reprocessed detection results",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/detections/images/reprocess-all": {
+      "post": {
+        "tags": [
+          "detections"
+        ],
+        "summary": "Reprocess All Detection Images",
+        "description": "Reprocess all detection images with current ML model and update database with new results.",
+        "operationId": "reprocess_all_detection_images_detections_images_reprocess_all_post",
+        "responses": {
+          "200": {
+            "description": "Bulk reprocessing results",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/activities": {
+      "get": {
+        "tags": [
+          "activities"
+        ],
+        "summary": "List Available Activities",
+        "description": "Get a list of all available activity types that can be detected and tracked.",
+        "operationId": "list_activities_activities_get",
+        "responses": {
+          "200": {
+            "description": "Activity types retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {},
+                "example": {
+                  "activities": [
+                    {
+                      "id": "sleeping",
+                      "name": "Sleeping",
+                      "description": "Cat is resting or sleeping"
+                    },
+                    {
+                      "id": "eating",
+                      "name": "Eating",
+                      "description": "Cat is eating food"
+                    },
+                    {
+                      "id": "playing",
+                      "name": "Playing",
+                      "description": "Cat is playing or being active"
+                    },
+                    {
+                      "id": "grooming",
+                      "name": "Grooming",
+                      "description": "Cat is grooming itself"
+                    }
+                  ],
+                  "total": 4
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        }
+      }
+    },
+    "/activities/summary": {
+      "get": {
+        "tags": [
+          "activities"
+        ],
+        "summary": "Get Activity Summary",
+        "description": "Get a summary of recent activity across all cameras and cats.",
+        "operationId": "get_activity_summary_activities_summary_get",
+        "responses": {
+          "200": {
+            "description": "Activity summary retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {},
+                "example": {
+                  "summary": {
+                    "total_detections_today": 45,
+                    "active_cameras": 3,
+                    "cats_detected": 2,
+                    "most_active_camera": "living_room",
+                    "most_common_activity": "sleeping",
+                    "last_detection": "2024-01-15T14:30:00Z"
+                  },
+                  "by_camera": [
+                    {
+                      "camera_name": "living_room",
+                      "detections_today": 25,
+                      "last_detection": "2024-01-15T14:30:00Z",
+                      "most_common_activity": "sleeping"
+                    }
+                  ],
+                  "by_activity": [
+                    {
+                      "activity": "sleeping",
+                      "count": 20,
+                      "percentage": 44.4
+                    },
+                    {
+                      "activity": "eating",
+                      "count": 15,
+                      "percentage": 33.3
+                    },
+                    {
+                      "activity": "playing",
+                      "count": 10,
+                      "percentage": 22.2
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        }
+      }
+    },
+    "/activities/history/{camera_name}": {
+      "get": {
+        "tags": [
+          "activities"
+        ],
+        "summary": "Get Camera Activity History",
+        "description": "Get activity history for a specific camera with optional date filtering.",
+        "operationId": "get_camera_activity_history_activities_history__camera_name__get",
+        "parameters": [
+          {
+            "name": "camera_name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Camera Name"
+            }
+          },
+          {
+            "name": "start_date",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Start date (YYYY-MM-DD)",
+              "title": "Start Date"
+            },
+            "description": "Start date (YYYY-MM-DD)"
+          },
+          {
+            "name": "end_date",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "End date (YYYY-MM-DD)",
+              "title": "End Date"
+            },
+            "description": "End date (YYYY-MM-DD)"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "description": "Maximum number of records to return",
+              "default": 100,
+              "title": "Limit"
+            },
+            "description": "Maximum number of records to return"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Activity history retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {},
+                "example": {
+                  "camera_name": "living_room",
+                  "total_detections": 25,
+                  "date_range": {
+                    "start": "2024-01-15T00:00:00Z",
+                    "end": "2024-01-15T23:59:59Z"
+                  },
+                  "detections": [
+                    {
+                      "id": 123,
+                      "timestamp": "2024-01-15T14:30:00Z",
+                      "confidence": 0.89,
+                      "detection_count": 2,
+                      "bounding_boxes": [
+                        {
+                          "class_id": 15,
+                          "confidence": 0.89,
+                          "x1": 100.5,
+                          "y1": 150.2,
+                          "x2": 300.8,
+                          "y2": 400.1
+                        }
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Camera not found"
+          },
+          "500": {
+            "description": "Internal server error"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/feedback": {
+      "get": {
+        "tags": [
+          "feedback"
+        ],
+        "summary": "List Feedback",
+        "description": "List all submitted feedback for review.",
+        "operationId": "list_feedback_feedback_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "feedback"
+        ],
+        "summary": "Submit Feedback",
+        "description": "Submit feedback for a detection image to improve the model.",
+        "operationId": "submit_feedback_feedback_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImageFeedback"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/feedback/{feedback_id}": {
+      "get": {
+        "tags": [
+          "feedback"
+        ],
+        "summary": "Get Feedback Details",
+        "description": "Get detailed feedback information.",
+        "operationId": "get_feedback_details_feedback__feedback_id__get",
+        "parameters": [
+          {
+            "name": "feedback_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Feedback Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "feedback"
+        ],
+        "summary": "Delete Feedback",
+        "description": "Delete feedback entry.",
+        "operationId": "delete_feedback_feedback__feedback_id__delete",
+        "parameters": [
+          {
+            "name": "feedback_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Feedback Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/training/status": {
+      "get": {
+        "tags": [
+          "training"
+        ],
+        "summary": "Get Training Status",
+        "description": "Get training status and available models.",
+        "operationId": "get_training_status_training_status_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/training/export": {
+      "post": {
+        "tags": [
+          "training"
+        ],
+        "summary": "Export Training Data",
+        "description": "Export feedback data in YOLO format that preserves COCO classes and adds metadata.",
+        "operationId": "export_training_data_training_export_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/training/retrain": {
+      "post": {
+        "tags": [
+          "training"
+        ],
+        "summary": "Retrain Model",
+        "description": "Model retraining that preserves COCO classes and adds cat identification capabilities through fine-tuning.",
+        "operationId": "retrain_model_training_retrain_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ModelRetrainRequest",
+                "default": {}
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/training/switch-model": {
+      "post": {
+        "tags": [
+          "training"
+        ],
+        "summary": "Switch Model",
+        "description": "Switch the current ML model to the specified model filename.",
+        "operationId": "switch_model_training_switch_model_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/cats": {
+      "get": {
+        "tags": [
+          "cats"
+        ],
+        "summary": "List Cat Profiles",
+        "description": "List all cat profiles.",
+        "operationId": "list_cat_profiles_cats_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "cats"
+        ],
+        "summary": "Create Cat Profile",
+        "description": "Create a new cat profile.",
+        "operationId": "create_cat_profile_cats_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CatProfile"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/cats/{cat_name}": {
+      "get": {
+        "tags": [
+          "cats"
+        ],
+        "summary": "Get Cat Profile",
+        "description": "Get detailed information about a specific cat.",
+        "operationId": "get_cat_profile_cats__cat_name__get",
+        "parameters": [
+          {
+            "name": "cat_name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Cat Name"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "cats"
+        ],
+        "summary": "Update Cat Profile",
+        "description": "Update an existing cat profile.",
+        "operationId": "update_cat_profile_cats__cat_name__put",
+        "parameters": [
+          {
+            "name": "cat_name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Cat Name"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CatProfile"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "cats"
+        ],
+        "summary": "Delete Cat Profile",
+        "description": "Delete a cat profile.",
+        "operationId": "delete_cat_profile_cats__cat_name__delete",
+        "parameters": [
+          {
+            "name": "cat_name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Cat Name"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/cats/{cat_name}/activity-history": {
+      "get": {
+        "tags": [
+          "cats"
+        ],
+        "summary": "Get Cat Activity History",
+        "description": "Get activity history for a specific named cat.",
+        "operationId": "get_cat_activity_history_cats__cat_name__activity_history_get",
+        "parameters": [
+          {
+            "name": "cat_name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Cat Name"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "BoundingBox": {
+        "properties": {
+          "x1": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "X1",
+            "description": "Left edge x-coordinate in pixels",
+            "example": 100.5
+          },
+          "y1": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Y1",
+            "description": "Top edge y-coordinate in pixels",
+            "example": 150.2
+          },
+          "x2": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "X2",
+            "description": "Right edge x-coordinate in pixels",
+            "example": 300.8
+          },
+          "y2": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Y2",
+            "description": "Bottom edge y-coordinate in pixels",
+            "example": 400.1
+          },
+          "width": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Width",
+            "description": "Width of the bounding box in pixels",
+            "example": 200.3
+          },
+          "height": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Height",
+            "description": "Height of the bounding box in pixels",
+            "example": 249.9
+          }
+        },
+        "type": "object",
+        "required": [
+          "x1",
+          "y1",
+          "x2",
+          "y2",
+          "width",
+          "height"
+        ],
+        "title": "BoundingBox",
+        "description": "Standardized bounding box model for feedback.\n\nRepresents rectangular coordinates in pixel space with additional\nwidth and height for convenience."
+      },
+      "CatActivity": {
+        "type": "string",
+        "enum": [
+          "unknown",
+          "sitting",
+          "lying",
+          "standing",
+          "moving",
+          "eating",
+          "playing",
+          "sleeping",
+          "grooming"
+        ],
+        "title": "CatActivity",
+        "description": "Enumeration of detectable cat activities.\n\nThese activities are recognized through pose analysis and behavioral patterns."
+      },
+      "CatProfile": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 50,
+            "minLength": 1,
+            "title": "Name",
+            "description": "Unique name identifier for the cat",
+            "example": "Whiskers"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description",
+            "description": "General description or notes about the cat",
+            "example": "A friendly orange tabby who loves to play with string toys"
+          },
+          "color": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Color",
+            "description": "Primary color or color pattern of the cat",
+            "example": "Orange tabby with white chest"
+          },
+          "breed": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 50
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Breed",
+            "description": "Breed of the cat (if known)",
+            "example": "Maine Coon"
+          },
+          "favorite_activities": {
+            "items": {
+              "$ref": "#/components/schemas/CatActivity"
+            },
+            "type": "array",
+            "title": "Favorite Activities",
+            "description": "List of activities this cat is commonly observed doing"
+          },
+          "created_timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created Timestamp",
+            "description": "When this cat profile was first created",
+            "example": "2023-12-01T14:30:22.123456"
+          },
+          "last_seen_timestamp": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Seen Timestamp",
+            "description": "When this cat was last detected in any camera",
+            "example": "2023-12-01T16:45:30.789012"
+          },
+          "total_detections": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Total Detections",
+            "description": "Total number of times this cat has been detected",
+            "default": 0,
+            "example": 127
+          },
+          "average_confidence": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Average Confidence",
+            "description": "Average detection confidence score for this cat",
+            "default": 0.0,
+            "example": 0.87
+          },
+          "preferred_locations": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Preferred Locations",
+            "description": "Camera/image sources where this cat is commonly seen",
+            "example": [
+              "living_room_camera",
+              "kitchen_camera"
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "created_timestamp"
+        ],
+        "title": "CatProfile",
+        "description": "Profile for a named cat with their characteristics.\n\nContains identification information, physical characteristics,\nbehavioral patterns, and detection statistics for individual cats."
+      },
+      "Detection": {
+        "properties": {
+          "class_id": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Class Id",
+            "description": "YOLO class ID for the detected object",
+            "example": 15
+          },
+          "class_name": {
+            "type": "string",
+            "title": "Class Name",
+            "description": "Human-readable name of the detected class",
+            "example": "cat"
+          },
+          "confidence": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Confidence",
+            "description": "Detection confidence score between 0.0 and 1.0",
+            "example": 0.85
+          },
+          "bounding_box": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "type": "object",
+            "title": "Bounding Box",
+            "description": "Bounding box coordinates in pixels",
+            "example": {
+              "height": 249.9,
+              "width": 200.3,
+              "x1": 100.5,
+              "x2": 300.8,
+              "y1": 150.2,
+              "y2": 400.1
+            }
+          }
+        },
+        "type": "object",
+        "required": [
+          "class_id",
+          "class_name",
+          "confidence",
+          "bounding_box"
+        ],
+        "title": "Detection",
+        "description": "Represents a single object detection result from ML model.\n\nContains the detected object's class information, confidence score,\nand bounding box coordinates."
+      },
+      "FeedbackAnnotation": {
+        "properties": {
+          "class_id": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Class Id",
+            "description": "YOLO class ID for the annotated object",
+            "example": 15
+          },
+          "class_name": {
+            "type": "string",
+            "title": "Class Name",
+            "description": "Human-readable name of the annotated class",
+            "example": "cat"
+          },
+          "bounding_box": {
+            "$ref": "#/components/schemas/BoundingBox",
+            "description": "Corrected or confirmed bounding box coordinates"
+          },
+          "confidence": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confidence",
+            "description": "User-provided confidence rating for this annotation",
+            "example": 0.95
+          },
+          "cat_name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 50
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cat Name",
+            "description": "Optional name for the identified cat",
+            "example": "Whiskers"
+          },
+          "activity_feedback": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Activity Feedback",
+            "description": "User's textual feedback about the cat's activity",
+            "example": "The cat appears to be playing with a toy mouse"
+          },
+          "correct_activity": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CatActivity"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "User's correction of the detected activity"
+          },
+          "activity_confidence": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Activity Confidence",
+            "description": "User's confidence in their activity assessment",
+            "example": 0.9
+          }
+        },
+        "type": "object",
+        "required": [
+          "class_id",
+          "class_name",
+          "bounding_box"
+        ],
+        "title": "FeedbackAnnotation",
+        "description": "User-provided annotation for training data.\n\nContains corrections, additions, or confirmations of detection results\nalong with optional cat identification and activity feedback."
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "ImageFeedback": {
+        "properties": {
+          "image_filename": {
+            "type": "string",
+            "title": "Image Filename",
+            "description": "Name of the image file being annotated",
+            "example": "camera1_20231201_143022_activity_detections.jpg"
+          },
+          "image_path": {
+            "type": "string",
+            "title": "Image Path",
+            "description": "Full path to the image file",
+            "example": "/detections/camera1_20231201_143022_activity_detections.jpg"
+          },
+          "original_detections": {
+            "items": {
+              "$ref": "#/components/schemas/Detection"
+            },
+            "type": "array",
+            "title": "Original Detections",
+            "description": "Original detection results from the ML model"
+          },
+          "user_annotations": {
+            "items": {
+              "$ref": "#/components/schemas/FeedbackAnnotation"
+            },
+            "type": "array",
+            "title": "User Annotations",
+            "description": "User-provided corrections and annotations"
+          },
+          "feedback_type": {
+            "type": "string",
+            "pattern": "^(correction|addition|confirmation|rejection)$",
+            "title": "Feedback Type",
+            "description": "Type of feedback being provided",
+            "example": "correction"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 1000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes",
+            "description": "Additional notes or comments from the user",
+            "example": "The second cat was missed by the detector - it's partially hidden behind the first cat"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Timestamp",
+            "description": "When this feedback was submitted",
+            "example": "2023-12-01T14:30:22.123456"
+          },
+          "user_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 50
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Id",
+            "description": "Identifier for the user providing feedback",
+            "default": "anonymous",
+            "example": "user123"
+          }
+        },
+        "type": "object",
+        "required": [
+          "image_filename",
+          "image_path",
+          "original_detections",
+          "user_annotations",
+          "feedback_type",
+          "timestamp"
+        ],
+        "title": "ImageFeedback",
+        "description": "Feedback data for a single detection image.\n\nContains the original detection results along with user corrections,\nadditions, and annotations for model improvement."
+      },
+      "ModelRetrainRequest": {
+        "properties": {
+          "custom_model_name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100,
+                "pattern": "^[a-zA-Z0-9_-]+$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Custom Model Name",
+            "description": "Custom name for the retrained model",
+            "example": "retrained_model_v2"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description",
+            "description": "Optional description of the retraining process",
+            "example": "Retrained with 500 new annotations focusing on sleeping cats"
+          }
+        },
+        "type": "object",
+        "title": "ModelRetrainRequest",
+        "description": "Request model for retraining with custom model name.\n\nUsed to initiate model retraining with feedback data and specify\na custom name for the resulting model."
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "main",
+      "description": "Main application endpoints including root interface and API information."
+    },
+    {
+      "name": "system",
+      "description": "System administration endpoints for status, configuration, health checks, and logs."
+    },
+    {
+      "name": "cameras",
+      "description": "Camera and image source management endpoints for listing cameras and fetching images."
+    },
+    {
+      "name": "detections",
+      "description": "Detection results and analysis endpoints for retrieving detection data and images."
+    },
+    {
+      "name": "activities",
+      "description": "Activity analysis endpoints for tracking and summarizing cat activities across cameras."
+    },
+    {
+      "name": "feedback",
+      "description": "Feedback system endpoints for submitting corrections and improvements to enhance model accuracy."
+    },
+    {
+      "name": "training",
+      "description": "Model training and management endpoints for custom model creation and switching between models."
+    },
+    {
+      "name": "cats",
+      "description": "Cat profile management endpoints for creating, updating, and tracking individual cats."
+    }
+  ]
+}

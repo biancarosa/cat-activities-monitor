@@ -1,0 +1,26 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# What is this project
+
+- This is a project that consists of an API in python and a frontend in nextjs to monitor cats activities.
+- It consumes snapshots of cameras and cats behaviors and stores them.
+- It is right now using common YOLO models. The idea is to, in the future, allow the user to train its own model to recognize its own cats. The training behavior and its output is still being tested.
+
+# Docs
+
+- You don't need to generate summaries or docs of whats been done. Just make sure its tested!
+
+# Refactors
+
+- Don't be afraid to remove code. Git history exists because of that.
+
+# Running the project
+
+- Most of the time the project will be running already so do not try to run it again, just check the default urls.
+
+# Open API docs
+
+- These are auto generated with `uv run python generate_openapi.py`. If you need to udpate them just re-run the command.

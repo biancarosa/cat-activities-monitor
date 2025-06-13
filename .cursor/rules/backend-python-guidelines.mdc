@@ -1,0 +1,8 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Running commands
+
+- For backend (python) commands, always run them using `uv`.

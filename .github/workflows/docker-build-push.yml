@@ -1,0 +1,61 @@
+name: Build and Push Docker Images
+
+on:
+  workflow_dispatch:
+  push: 
+    tags:
+      - 'v*'
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    env:
+      DOCKERHUB_USER: biancarosa
+      API_IMAGE: cat-activities-monitor-api
+      FRONTEND_IMAGE: cat-activities-monitor-frontend
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to DockerHub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Get API version
+        id: api_version
+        run: |
+          version=$(grep '^version' api/pyproject.toml | head -1 | cut -d '"' -f2)
+          echo "API_VERSION=$version" >> $GITHUB_OUTPUT
+
+      - name: Get Frontend version
+        id: frontend_version
+        run: |
+          version=$(jq -r .version frontend/package.json)
+          echo "FRONTEND_VERSION=$version" >> $GITHUB_OUTPUT
+
+      - name: Build and push API Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./api
+          file: ./api/Dockerfile
+          push: true
+          platforms: linux/amd64,linux/arm64
+          tags: |
+            ${{ env.DOCKERHUB_USER }}/${{ env.API_IMAGE }}:${{ steps.api_version.outputs.API_VERSION }}
+            ${{ env.DOCKERHUB_USER }}/${{ env.API_IMAGE }}:latest
+
+      - name: Build and push Frontend Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./frontend
+          file: ./frontend/Dockerfile
+          push: true
+          platforms: linux/amd64,linux/arm64
+          tags: |
+            ${{ env.DOCKERHUB_USER }}/${{ env.FRONTEND_IMAGE }}:${{ steps.frontend_version.outputs.FRONTEND_VERSION }}
+            ${{ env.DOCKERHUB_USER }}/${{ env.FRONTEND_IMAGE }}:latest 

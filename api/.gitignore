@@ -1,0 +1,14 @@
+detections/*
+__pycache__
+*.pyc
+
+# Test results
+test_results/
+advanced_results/
+ml_models/
+
+*.db
+*.log
+
+# Configuration files with sensitive data
+config.yaml
