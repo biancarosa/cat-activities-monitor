@@ -3,10 +3,8 @@ Detection results and image analysis routes.
 """
 
 import logging
-import re
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional
 
 from fastapi import APIRouter, Request, HTTPException
 
@@ -95,7 +93,7 @@ async def cleanup_detection_database(request: Request, keep_days: int = 7):
         database_service = request.app.state.database_service
         deleted_count = await database_service.cleanup_old_detection_results(keep_days)
         return {
-            "message": f"Database cleanup completed",
+            "message": "Database cleanup completed",
             "deleted_records": deleted_count,
             "kept_days": keep_days,
             "cleanup_timestamp": datetime.now().isoformat()
@@ -619,7 +617,7 @@ async def reprocess_all_detection_images(request: Request):
         logger.info(f"✅ Bulk reprocessing completed: {processed_count} processed, {error_count} errors")
         
         return {
-            "message": f"Bulk reprocessing completed",
+            "message": "Bulk reprocessing completed",
             "total_images": len(image_files),
             "processed": processed_count,
             "errors": error_count,

@@ -33,7 +33,7 @@ def generate_openapi_docs():
         yaml.dump(openapi_schema, f, default_flow_style=False, allow_unicode=True)
     
     # Generate a simple HTML documentation page
-    html_content = f"""
+    html_content = """
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -42,18 +42,18 @@ def generate_openapi_docs():
     <title>Cat Activities Monitor API Documentation</title>
     <link rel="stylesheet" type="text/css" href="https://unpkg.com/swagger-ui-dist@5.9.0/swagger-ui.css" />
     <style>
-        html {{
+        html {
             box-sizing: border-box;
             overflow: -moz-scrollbars-vertical;
             overflow-y: scroll;
-        }}
-        *, *:before, *:after {{
+        }
+        *, *:before, *:after {
             box-sizing: inherit;
-        }}
-        body {{
+        }
+        body {
             margin:0;
             background: #fafafa;
-        }}
+        }
     </style>
 </head>
 <body>
@@ -61,8 +61,8 @@ def generate_openapi_docs():
     <script src="https://unpkg.com/swagger-ui-dist@5.9.0/swagger-ui-bundle.js"></script>
     <script src="https://unpkg.com/swagger-ui-dist@5.9.0/swagger-ui-standalone-preset.js"></script>
     <script>
-        window.onload = function() {{
-            const ui = SwaggerUIBundle({{
+        window.onload = function() {
+            const ui = SwaggerUIBundle({
                 url: './openapi.json',
                 dom_id: '#swagger-ui',
                 deepLinking: true,
@@ -79,8 +79,8 @@ def generate_openapi_docs():
                 docExpansion: 'list',
                 defaultModelsExpandDepth: 2,
                 defaultModelExpandDepth: 2
-            }});
-        }};
+            });
+        };
     </script>
 </body>
 </html>
@@ -90,14 +90,14 @@ def generate_openapi_docs():
     with open(html_path, "w", encoding="utf-8") as f:
         f.write(html_content)
     
-    print(f"✅ OpenAPI documentation generated successfully!")
+    print("✅ OpenAPI documentation generated successfully!")
     print(f"📁 Files created in {docs_dir.absolute()}:")
     print(f"   - openapi.json ({json_path.stat().st_size} bytes)")
     print(f"   - openapi.yaml ({yaml_path.stat().st_size} bytes)")
-    print(f"   - index.html (Swagger UI)")
-    print(f"\n🌐 To view the documentation:")
+    print("   - index.html (Swagger UI)")
+    print("\n🌐 To view the documentation:")
     print(f"   - Open {html_path.absolute()} in your browser")
-    print(f"   - Or start the API server and visit http://localhost:8000/docs")
+    print("   - Or start the API server and visit http://localhost:8000/docs")
 
 
 if __name__ == "__main__":

@@ -4,7 +4,6 @@ Image service for Cat Activities Monitor API.
 
 import asyncio
 import logging
-from pathlib import Path
 from typing import Optional, Tuple
 from datetime import datetime
 
@@ -50,7 +49,7 @@ class ImageService:
                             content_type = image_response.headers.get("content-type", "")
                             image_data = image_response.content
                         else:
-                            logger.warning(f"JSON response doesn't contain expected image URL structure")
+                            logger.warning("JSON response doesn't contain expected image URL structure")
                             return False, None
                     except Exception as e:
                         logger.error(f"Error processing JSON response: {e}")
@@ -105,7 +104,7 @@ class ImageService:
                                 if detection_result.primary_activity:
                                     logger.info(f"  🎯 Primary activity: {detection_result.primary_activity.value}")
                             else:
-                                logger.info(f"  No specific activities detected")
+                                logger.info("  No specific activities detected")
                         else:
                             logger.info(f"No target objects detected in '{image_config.name}' "
                                       f"(Total animals: {detection_result.total_animals})")

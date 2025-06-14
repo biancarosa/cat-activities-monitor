@@ -2,7 +2,7 @@
 Configuration models.
 """
 
-from typing import List, Optional
+from typing import List
 from pydantic import BaseModel, HttpUrl, ConfigDict
 
 

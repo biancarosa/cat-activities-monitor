@@ -8,8 +8,6 @@ import json
 import hashlib
 import os
 from datetime import datetime, timedelta
-from pathlib import Path
-from typing import Dict, Optional
 import numpy as np
 
 from models import CatDetectionWithActivity

@@ -6,7 +6,6 @@ import hashlib
 import logging
 from datetime import datetime
 from pathlib import Path
-from typing import List
 
 from fastapi import APIRouter, Request, HTTPException
 

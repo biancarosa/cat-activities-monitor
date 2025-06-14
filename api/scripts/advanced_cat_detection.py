@@ -15,7 +15,6 @@ from pathlib import Path
 from PIL import Image, ImageDraw, ImageFont, ImageEnhance, ImageFilter
 import numpy as np
 from ultralytics import YOLO
-import cv2
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
@@ -281,7 +280,7 @@ def detect_cats_advanced(image_path, output_dir="./advanced_results"):
         
         # Best configuration
         best = best_results[0]
-        logger.info(f"\n🏆 BEST CONFIGURATION:")
+        logger.info("\n🏆 BEST CONFIGURATION:")
         logger.info(f"   Preprocessing: {best['preprocessing']}")
         logger.info(f"   Config: {best['config']}")
         logger.info(f"   Detections: {best['detection_count']}")

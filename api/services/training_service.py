@@ -5,14 +5,11 @@ Training service for Cat Activities Monitor API.
 import json
 import logging
 import shutil
-import subprocess
-import uuid
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List
 
 from models import (
-    ImageFeedback, FeedbackAnnotation, 
     ModelSaveRequest, ModelRetrainRequest
 )
 
@@ -163,13 +160,13 @@ class TrainingService:
                 'copy_paste': 0.0  # Segment copy-paste (probability)
             }
             
-            logger.info(f"🔧 Enhanced training parameters: Fine-tuning mode")
-            logger.info(f"📊 Training data summary:")
+            logger.info("🔧 Enhanced training parameters: Fine-tuning mode")
+            logger.info("📊 Training data summary:")
             logger.info(f"   Images: {image_count}")
             logger.info(f"   Labels: {label_count}")
             logger.info(f"   Named cats: {len(cat_identification_data)}")
-            logger.info(f"🎯 COCO classes preserved: True")
-            logger.info(f"🔬 Training approach: Fine-tuning with metadata enhancement")
+            logger.info("🎯 COCO classes preserved: True")
+            logger.info("🔬 Training approach: Fine-tuning with metadata enhancement")
             
             # Start enhanced training
             logger.info("🏋️ Starting enhanced ML model fine-tuning...")
@@ -224,11 +221,11 @@ class TrainingService:
                 with open(metadata_path, 'w') as f:
                     json.dump(metadata, f, indent=2, default=str)
                 
-                logger.info(f"✅ Enhanced model fine-tuning completed successfully!")
+                logger.info("✅ Enhanced model fine-tuning completed successfully!")
                 logger.info(f"💾 Enhanced model saved: {final_model_path}")
                 logger.info(f"📋 Enhanced metadata: {metadata_path}")
                 logger.info(f"📊 Training results: {training_results_dir}")
-                logger.info(f"🎯 COCO classes preserved: cat=15, dog=16")
+                logger.info("🎯 COCO classes preserved: cat=15, dog=16")
                 logger.info(f"🐱 Cat identification data: {len(cat_identification_data)} named cats")
                 
                 return {

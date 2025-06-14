@@ -4,17 +4,15 @@ ML Models Training routes.
 
 import json
 import logging
-import re
 import shutil
 import yaml
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional
 
 from fastapi import APIRouter, Request, HTTPException
 from PIL import Image
 
-from models import ModelRetrainRequest, ModelSaveRequest
+from models import ModelRetrainRequest
 
 logger = logging.getLogger(__name__)
 
@@ -338,7 +336,7 @@ async def export_training_data(request: Request):
         logger.info(f"📦 Enhanced training data exported: {len(exported_images)} images, {total_annotations} annotations")
         logger.info(f"🐱 Named cats: {named_cats_count}, Activity feedback: {activity_feedback_count}")
         logger.info(f"📍 Unique locations: {len(unique_locations)}")
-        logger.info(f"🎯 Training mode: Enhanced fine-tuning with COCO class preservation")
+        logger.info("🎯 Training mode: Enhanced fine-tuning with COCO class preservation")
         
         return {
             "message": "Enhanced training data exported successfully",

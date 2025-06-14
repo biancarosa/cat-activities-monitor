@@ -3,7 +3,6 @@ Main routes for core application endpoints.
 """
 
 import logging
-from pathlib import Path
 
 from fastapi import APIRouter
 

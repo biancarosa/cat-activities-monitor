@@ -9,7 +9,6 @@ from main import (
     CatActivity, 
     ActivityDetection, 
     analyze_cat_pose_activity, 
-    detect_movement_activity,
     Detection
 )
 

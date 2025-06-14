@@ -205,9 +205,9 @@ def test_detection_parameters(image_path: str, output_dir: str = "./test_results
         logger.info(f"   Image size: {best_result['config']['imgsz']}")
         
         # Generate config snippet
-        logger.info(f"\n📝 CONFIG.YAML SNIPPET:")
-        logger.info(f"global:")
-        logger.info(f"  ml_model_config:")
+        logger.info("\n📝 CONFIG.YAML SNIPPET:")
+        logger.info("global:")
+        logger.info("  ml_model_config:")
         logger.info(f"    model: \"{best_result['model']}\"")
         logger.info(f"    confidence_threshold: {best_result['config']['conf']}")
         logger.info(f"    iou_threshold: {best_result['config']['iou']}")

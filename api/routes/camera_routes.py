@@ -2,10 +2,8 @@
 Camera and image source routes.
 """
 
-import asyncio
 import logging
 
-import httpx
 from fastapi import APIRouter, Request, HTTPException
 
 logger = logging.getLogger(__name__)

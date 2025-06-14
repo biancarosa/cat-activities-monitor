@@ -3,7 +3,6 @@ Cat profile routes.
 """
 
 import logging
-from datetime import datetime
 
 from fastapi import APIRouter, Request, HTTPException
 
@@ -36,7 +35,7 @@ async def create_cat_profile(request: Request, cat_profile: CatProfile):
         logger.info(f"🐱 Created new cat profile: {cat_profile.name}")
         
         return {
-            "message": f"Cat profile created successfully",
+            "message": "Cat profile created successfully",
             "cat_name": cat_profile.name,
             "created_timestamp": cat_profile.created_timestamp.isoformat(),
             "persisted": True
@@ -103,7 +102,7 @@ async def update_cat_profile(request: Request, cat_name: str, updated_profile: C
         logger.info(f"🐱 Updated cat profile: {cat_name}")
         
         return {
-            "message": f"Cat profile updated successfully",
+            "message": "Cat profile updated successfully",
             "cat_name": cat_name,
             "persisted": True
         }
@@ -129,7 +128,7 @@ async def delete_cat_profile(request: Request, cat_name: str):
         logger.info(f"🗑️ Deleted cat profile: {cat_name}")
         
         return {
-            "message": f"Cat profile deleted successfully",
+            "message": "Cat profile deleted successfully",
             "deleted_cat": cat_name
         }
     except Exception as e:

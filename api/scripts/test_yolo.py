@@ -28,14 +28,14 @@ def test_imports():
     
     try:
         from PIL import Image
-        logger.info(f"✅ Pillow imported successfully")
+        logger.info("✅ Pillow imported successfully")
     except ImportError as e:
         logger.error(f"❌ Failed to import Pillow: {e}")
         return False
     
     try:
         from ultralytics import YOLO
-        logger.info(f"✅ Ultralytics imported successfully")
+        logger.info("✅ Ultralytics imported successfully")
     except ImportError as e:
         logger.error(f"❌ Failed to import Ultralytics: {e}")
         return False
