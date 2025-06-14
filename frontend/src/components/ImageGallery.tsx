@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { detectionApi, cameraApi, DetectionImage } from '@/lib/api';
 import { getCatColor, getCatColorLight } from '@/lib/colors';
+import { configManager } from '@/lib/config';
 import JsonViewerModal from '@/components/JsonViewerModal';
 import FeedbackModal from '@/components/FeedbackModal';
 import Image from 'next/image';
@@ -158,7 +159,7 @@ export default function ImageGallery({ className = '', onStatsUpdate }: ImageGal
 
   const getImageUrl = (filename: string) => {
     // Images are served from /static static mount
-    return `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/static/${filename}`;
+    return `${configManager.getApiUrl()}/static/${filename}`;
   };
 
   const getConfidenceBadge = (confidence: number | null) => {

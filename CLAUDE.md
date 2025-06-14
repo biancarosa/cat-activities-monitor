@@ -25,6 +25,11 @@ docker-compose up -d
 # Frontend: http://localhost:3000
 # Backend API: http://localhost:8000
 # API Docs: http://localhost:8000/docs
+
+# Configure API URL (if not using localhost:8000)
+# 1. Open http://localhost:3000/settings
+# 2. Enter your API server URL
+# 3. Click "Save & Test"
 ```
 
 ### Local Development
@@ -245,20 +250,26 @@ docker build -t cat-monitor-frontend ./frontend
 ```
 
 ### Environment Variables
-- `NEXT_PUBLIC_API_URL`: Frontend API endpoint
 - `DATABASE_URL`: PostgreSQL connection string
 - `POSTGRES_*`: Database configuration
+
+### Frontend API Configuration
+The frontend API URL is configured at runtime through the Settings page (`/settings`). Users can:
+- Set a custom API URL that persists in localStorage
+- Test the connection before saving
+- Reset to the default `http://localhost:8000`
+- No build-time environment variables are required
 
 ## Troubleshooting
 
 ### Common Issues
-1. **Infinite Loop in Image Fetching**: Ensure `onStatsUpdate` callback is memoized
-2. **Camera Connection Errors**: Check camera URLs and network connectivity
-3. **Model Loading Issues**: Ensure YOLO model files are in `ml_models/` directory
-4. **Database Connection**: Verify PostgreSQL is running and accessible
-5. **Color Inconsistencies**: Verify color palette matches between frontend and backend
-6. **Training Data Issues**: Ensure minimum annotation requirements are met
-7. **API Configuration**: Use Settings page to test and configure API URL
+1. **API Connection Errors**: Use Settings page (`/settings`) to configure the correct API URL
+2. **Infinite Loop in Image Fetching**: Ensure `onStatsUpdate` callback is memoized
+3. **Camera Connection Errors**: Check camera URLs and network connectivity
+4. **Model Loading Issues**: Ensure YOLO model files are in `ml_models/` directory
+5. **Database Connection**: Verify PostgreSQL is running and accessible
+6. **Color Inconsistencies**: Verify color palette matches between frontend and backend
+7. **Training Data Issues**: Ensure minimum annotation requirements are met
 
 ### Debugging
 - **Frontend**: Browser dev tools, React DevTools

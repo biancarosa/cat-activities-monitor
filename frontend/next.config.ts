@@ -37,10 +37,6 @@ const nextConfig: NextConfig = {
     return config;
   },
 
-  // Enable runtime configuration
-  env: {
-    NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000',
-  },
 };
 
 export default nextConfig;

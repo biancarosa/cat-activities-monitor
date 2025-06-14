@@ -209,7 +209,9 @@ class ApiClient {
   }
 
   private async request<T>(endpoint: string, options?: RequestInit): Promise<T> {
-    const url = `${this.baseUrl}${endpoint}`;
+    // Always use the current API URL from configManager to support runtime changes
+    const currentBaseUrl = configManager.getApiUrl();
+    const url = `${currentBaseUrl}${endpoint}`;
     
     try {
       const response = await fetch(url, {

@@ -3,7 +3,7 @@ const CONFIG_KEYS = {
   API_URL: 'cat-monitor-api-url',
 } as const;
 
-const DEFAULT_API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+const DEFAULT_API_URL = 'http://localhost:8000';
 
 export class ConfigManager {
   private static instance: ConfigManager;

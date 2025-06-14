@@ -38,8 +38,6 @@ services:
   # Frontend
   frontend:
     image: biancarosa/cat-activities-monitor-frontend:latest
-    environment:
-      - NEXT_PUBLIC_API_URL=http://<your-server-ip-address>:8000
     ports:
       - "3000:3000"
     depends_on:

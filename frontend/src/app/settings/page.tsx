@@ -290,7 +290,7 @@ export default function SettingsPage() {
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="md:col-span-2 space-y-2">
-                  <Label htmlFor="api-url">API Server URL</Label>
+                  <label htmlFor="api-url" className="text-sm font-medium">API Server URL</label>
                   <Input
                     id="api-url"
                     type="url"

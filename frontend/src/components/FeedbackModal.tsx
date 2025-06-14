@@ -29,6 +29,7 @@ import {
 } from 'lucide-react';
 import { DetectionImage, FeedbackAnnotation, ImageFeedback, feedbackApi } from '@/lib/api';
 import { getCatColor, getCatColorLight } from '@/lib/colors';
+import { configManager } from '@/lib/config';
 import Image from 'next/image';
 
 interface FeedbackModalProps {
@@ -186,7 +187,7 @@ export default function FeedbackModal({
   };
 
   const getImageUrl = (filename: string) => {
-    return `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/static/${filename}`;
+    return `${configManager.getApiUrl()}/static/${filename}`;
   };
 
   const defaultTrigger = (
