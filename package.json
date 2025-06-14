@@ -1,10 +1,6 @@
 {
   "name": "cat-activities-monitor",
   "private": true,
-  "workspaces": [
-    "frontend",
-    "api"
-  ],
   "scripts": {
     "postinstall": "husky",
     "release": "standard-version",
