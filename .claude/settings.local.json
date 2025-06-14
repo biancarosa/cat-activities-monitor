@@ -5,7 +5,11 @@
       "Bash(grep:*)",
       "Bash(npm run build:*)",
       "Bash(python:*)",
-      "Bash(npm run lint)"
+      "Bash(npm run lint)",
+      "Bash(mkdir:*)",
+      "Bash(uv run:*)",
+      "Bash(chmod:*)",
+      "Bash(rm:*)"
     ],
     "deny": []
   },

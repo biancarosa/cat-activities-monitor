@@ -115,9 +115,9 @@ async def lifespan(app: FastAPI):
         database_service = DatabaseService()
         detection_service = DetectionService()
         
-        # Initialize async database
+        # Initialize database and run migrations
         await database_service.init_database()
-        logger.info("💾 Database initialized")
+        logger.info("💾 Database initialized and migrations applied")
         
         # TrainingService depends on DatabaseService  
         training_service = TrainingService(database_service)
