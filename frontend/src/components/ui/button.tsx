@@ -40,19 +40,24 @@ function Button({
   variant,
   size,
   asChild = false,
+  children,
   ...props
 }: React.ComponentProps<"button"> &
   VariantProps<typeof buttonVariants> & {
-    asChild?: boolean
+    asChild?: boolean;
+    children?: React.ReactNode;
   }) {
   const Comp = asChild ? Slot : "button"
 
   return (
+    // @ts-expect-error - Node 24 + React 18 + Radix UI Slot compatibility
     <Comp
       data-slot="button"
       className={cn(buttonVariants({ variant, size, className }))}
       {...props}
-    />
+    >
+      <>{children}</>
+    </Comp>
   )
 }
 

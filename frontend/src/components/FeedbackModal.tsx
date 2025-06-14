@@ -35,7 +35,7 @@ import Image from 'next/image';
 interface FeedbackModalProps {
   image: DetectionImage;
   onFeedbackSubmitted?: () => void;
-  trigger?: React.ReactNode;
+  trigger?: React.ReactElement;
 }
 
 const ACTIVITY_OPTIONS = [
