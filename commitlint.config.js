@@ -19,7 +19,8 @@ module.exports = {
         'docker',
         'ci',
         'docs',
-        'config'
+        'config',
+        'release'
       ]
     ],
     'scope-empty': [0, 'never'],
