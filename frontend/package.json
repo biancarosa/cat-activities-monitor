@@ -1,6 +1,6 @@
 {
   "name": "frontend",
-  "version": "0.1.1",
+  "version": null,
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
