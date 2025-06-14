@@ -170,7 +170,7 @@ class TrainingService:
             
             # Start enhanced training
             logger.info("🏋️ Starting enhanced ML model fine-tuning...")
-            results = ml_model.train(**training_params)
+            _ = ml_model.train(**training_params)
             
             # Find the best model from training
             training_results_dir = Path(f"./ml_models/training_runs/{model_name}")

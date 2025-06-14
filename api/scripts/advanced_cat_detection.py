@@ -228,7 +228,7 @@ def detect_cats_advanced(image_path, output_dir="./advanced_results"):
                 
                 try:
                     font = ImageFont.truetype("arial.ttf", 16)
-                except:
+                except (OSError, IOError):
                     font = ImageFont.load_default()
                 
                 # Draw detections

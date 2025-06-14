@@ -130,7 +130,7 @@ def test_detection_parameters(image_path: str, output_dir: str = "./test_results
                 
                 try:
                     font = ImageFont.truetype("arial.ttf", 16)
-                except:
+                except (OSError, IOError):
                     font = ImageFont.load_default()
                 
                 # Draw all animal detections

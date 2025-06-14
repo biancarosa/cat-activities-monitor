@@ -324,8 +324,6 @@ class DetectionService:
         if image_name not in self.activity_history:
             self.activity_history[image_name] = deque(maxlen=10)  # Keep last 10 activity detections
         
-        current_time = time.time()
-        
         # Add current activities to history
         for activity in activities:
             self.activity_history[image_name].append(activity)
@@ -658,7 +656,7 @@ class DetectionService:
             try:
                 font = ImageFont.truetype("arial.ttf", 20)
                 small_font = ImageFont.truetype("arial.ttf", 16)
-            except:
+            except (OSError, IOError):
                 font = ImageFont.load_default()
                 small_font = font
             

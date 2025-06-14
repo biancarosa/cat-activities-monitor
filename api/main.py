@@ -130,7 +130,7 @@ async def lifespan(app: FastAPI):
         logger.info(f"📋 Configuration loaded: {len(config.images)} image sources")
         
         # Initialize ML model
-        ml_model = detection_service.initialize_ml_model(config.global_.ml_model_config)
+        detection_service.initialize_ml_model(config.global_.ml_model_config)
         logger.info(f"🤖 ML model loaded: {config.global_.ml_model_config.model}")
         
         # Load activity history and previous detections from database

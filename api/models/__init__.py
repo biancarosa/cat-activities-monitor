@@ -3,10 +3,18 @@ Models package.
 Contains all Pydantic models and data structures.
 """
 
-from .config import *
-from .detection import *
-from .feedback import *
-from .cat import *
+from .config import (
+    ImageConfig, AppConfig, ChangeDetectionConfig, YOLOConfig, 
+    GlobalConfig, Config
+)
+from .detection import (
+    Detection, CatActivity, ActivityDetection, CatDetectionWithActivity
+)
+from .feedback import (
+    BoundingBox, FeedbackAnnotation, ImageFeedback, TrainingDataExport,
+    ModelSaveRequest, ModelRetrainRequest
+)
+from .cat import CatProfile
 
 __all__ = [
     # Config models

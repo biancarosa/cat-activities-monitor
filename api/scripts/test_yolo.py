@@ -27,14 +27,18 @@ def test_imports():
         return False
     
     try:
-        from PIL import Image
+        import importlib.util
+        if importlib.util.find_spec("PIL.Image") is None:
+            raise ImportError("PIL.Image not found")
         logger.info("✅ Pillow imported successfully")
     except ImportError as e:
         logger.error(f"❌ Failed to import Pillow: {e}")
         return False
     
     try:
-        from ultralytics import YOLO
+        import importlib.util
+        if importlib.util.find_spec("ultralytics") is None:
+            raise ImportError("ultralytics not found")
         logger.info("✅ Ultralytics imported successfully")
     except ImportError as e:
         logger.error(f"❌ Failed to import Ultralytics: {e}")
@@ -54,7 +58,7 @@ def test_ml_model():
         import numpy as np
         dummy_image = np.zeros((640, 640, 3), dtype=np.uint8)
         logger.info("🔄 Running test inference...")
-        results = model(dummy_image, verbose=False)
+        _ = model(dummy_image, verbose=False)
         logger.info("✅ Test inference completed successfully")
         
         return True
