@@ -61,8 +61,8 @@ This project follows the [Conventional Commits](https://www.conventionalcommits.
 - `revert`: Revert commits
 
 #### Scopes
-- Frontend: `frontend`, `ui`, `components`, `styles`, `api-client`
-- Backend: `api`, `database`, `ml`, `detection`
+- Frontend: `frontend`, `ui`, `components`, `styles`
+- Backend: `api`, `ml`
 - Shared: `deps`, `deps-dev`, `docker`, `ci`, `docs`, `config`
 
 #### Examples
