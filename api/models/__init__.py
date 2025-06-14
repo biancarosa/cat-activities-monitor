@@ -7,6 +7,7 @@ from .config import *
 from .detection import *
 from .feedback import *
 from .cat import *
+from .recognition import *
 
 __all__ = [
     # Config models
@@ -21,5 +22,11 @@ __all__ = [
     "ModelSaveRequest", "ModelRetrainRequest",
     
     # Cat models
-    "CatProfile"
+    "CatProfile",
+    
+    # Recognition models
+    "CatFeature", "CatRecognitionModel", "CatRecognitionResult", "CatRecognitionRequest",
+    "FeatureExtractionRequest", "FeatureExtractionResult", "CatSimilarityMatch",
+    "RecognitionTrainingData", "ModelTrainingRequest", "ModelTrainingResult",
+    "RecognitionSystemStatus", "ActivityEnhancedRecognition"
 ] 
