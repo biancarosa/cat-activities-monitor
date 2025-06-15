@@ -339,6 +339,50 @@ class ApiClient {
       headers: { 'Content-Type': 'application/json' },
     });
   }
+
+  // Cat Profile public methods
+  public async listCatProfiles(): Promise<CatProfileListResponse> {
+    return this.request<CatProfileListResponse>('/cats');
+  }
+  public async createCatProfile(profileData: CreateCatProfileRequest): Promise<CatProfileResponse> {
+    return this.request('/cats', {
+      method: 'POST',
+      body: JSON.stringify(profileData),
+    });
+  }
+  public async getCatProfileByUuid(catUuid: string): Promise<CatProfile> {
+    return this.request<CatProfile>(`/cats/by-uuid/${encodeURIComponent(catUuid)}`);
+  }
+  public async getCatProfileByName(catName: string): Promise<CatProfile> {
+    return this.request<CatProfile>(`/cats/by-name/${encodeURIComponent(catName)}`);
+  }
+  public async updateCatProfile(catUuid: string, profileData: UpdateCatProfileRequest): Promise<CatProfileResponse> {
+    return this.request(`/cats/${encodeURIComponent(catUuid)}`, {
+      method: 'PUT',
+      body: JSON.stringify(profileData),
+    });
+  }
+  public async deleteCatProfile(catUuid: string): Promise<{ message: string; deleted_cat_uuid: string; deleted_cat_name: string }> {
+    return this.request(`/cats/${encodeURIComponent(catUuid)}`, {
+      method: 'DELETE',
+    });
+  }
+  public async getCatActivityHistory(catName: string): Promise<{
+    cat_name: string;
+    total_feedback_entries: number;
+    activity_history: Array<{
+      feedback_id: string;
+      timestamp: string;
+      image_filename: string;
+      detected_activity?: string;
+      activity_feedback?: string;
+      confidence?: number;
+      bounding_box: BoundingBox;
+    }>;
+    data_source: string;
+  }> {
+    return this.request(`/cats/by-name/${encodeURIComponent(catName)}/activity-history`);
+  }
 }
 
 // Export singleton instance
@@ -532,30 +576,22 @@ export interface CatProfileResponse {
 
 // Cat Profile API methods
 export const catProfileApi = {
-  list: (): Promise<CatProfileListResponse> => apiClient.request<CatProfileListResponse>('/cats'),
+  list: (): Promise<CatProfileListResponse> => apiClient.listCatProfiles(),
   
   create: (profileData: CreateCatProfileRequest): Promise<CatProfileResponse> => 
-    apiClient.request('/cats', {
-      method: 'POST',
-      body: JSON.stringify(profileData),
-    }),
+    apiClient.createCatProfile(profileData),
   
   getByUuid: (catUuid: string): Promise<CatProfile> => 
-    apiClient.request<CatProfile>(`/cats/by-uuid/${encodeURIComponent(catUuid)}`),
+    apiClient.getCatProfileByUuid(catUuid),
   
   getByName: (catName: string): Promise<CatProfile> => 
-    apiClient.request<CatProfile>(`/cats/by-name/${encodeURIComponent(catName)}`),
+    apiClient.getCatProfileByName(catName),
   
   update: (catUuid: string, profileData: UpdateCatProfileRequest): Promise<CatProfileResponse> => 
-    apiClient.request(`/cats/${encodeURIComponent(catUuid)}`, {
-      method: 'PUT',
-      body: JSON.stringify(profileData),
-    }),
+    apiClient.updateCatProfile(catUuid, profileData),
   
   delete: (catUuid: string): Promise<{ message: string; deleted_cat_uuid: string; deleted_cat_name: string }> => 
-    apiClient.request(`/cats/${encodeURIComponent(catUuid)}`, {
-      method: 'DELETE',
-    }),
+    apiClient.deleteCatProfile(catUuid),
   
   getActivityHistory: (catName: string): Promise<{
     cat_name: string;
@@ -570,5 +606,5 @@ export const catProfileApi = {
       bounding_box: BoundingBox;
     }>;
     data_source: string;
-  }> => apiClient.request(`/cats/by-name/${encodeURIComponent(catName)}/activity-history`),
+  }> => apiClient.getCatActivityHistory(catName),
 }; 

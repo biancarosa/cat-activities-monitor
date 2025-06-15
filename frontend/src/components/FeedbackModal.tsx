@@ -11,7 +11,6 @@ import {
   DialogTrigger 
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { 
@@ -20,7 +19,6 @@ import {
   AlertCircle,
   CheckCircle,
   Cat,
-  Activity,
   MessageSquare,
   Check,
   X,
@@ -37,18 +35,6 @@ interface FeedbackModalProps {
   onFeedbackSubmitted?: () => void;
   trigger?: React.ReactElement;
 }
-
-const ACTIVITY_OPTIONS = [
-  'unknown',
-  'sitting', 
-  'lying',
-  'standing',
-  'moving',
-  'eating',
-  'playing',
-  'sleeping',
-  'grooming'
-];
 
 export default function FeedbackModal({ 
   image, 
@@ -264,7 +250,7 @@ export default function FeedbackModal({
                     <div className="flex space-x-1 mr-1">
                       {Object.keys(image.activities_by_cat).slice(0, 3).map((catIndex) => {
                         const catIndexNum = parseInt(catIndex);
-                        const catColor = getCatColor(undefined, catIndexNum);
+                        const catColor = getCatColor(undefined, undefined, catIndexNum);
                         return (
                           <div
                             key={catIndex}
@@ -316,8 +302,8 @@ export default function FeedbackModal({
               
               {image.detections.map((detection, index) => {
                 const currentFeedback = catAnnotations[index]?.feedbackType || 'skip';
-                const catColor = getCatColor(undefined, index);
-                const catColorLight = getCatColorLight(undefined, index);
+                const catColor = getCatColor(undefined, undefined, index);
+                const catColorLight = getCatColorLight(undefined, undefined, index);
                 
                 return (
                 <div key={index} className={`p-4 border rounded-lg space-y-3 ${

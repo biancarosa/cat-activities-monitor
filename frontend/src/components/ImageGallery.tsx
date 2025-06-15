@@ -19,7 +19,6 @@ import {
   Target
 } from 'lucide-react';
 import { detectionApi, cameraApi, DetectionImage } from '@/lib/api';
-import { getCatColor, getCatColorLight } from '@/lib/colors';
 import { configManager } from '@/lib/config';
 import JsonViewerModal from '@/components/JsonViewerModal';
 import FeedbackModal from '@/components/FeedbackModal';

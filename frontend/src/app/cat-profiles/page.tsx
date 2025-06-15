@@ -117,7 +117,7 @@ export default function CatProfilesPage() {
                 Add a new cat to your monitoring system with a unique identifier.
               </DialogDescription>
             </DialogHeader>
-            <CatProfileForm onSubmit={handleCreateProfile} />
+            <CatProfileForm<CreateCatProfileRequest> onSubmit={handleCreateProfile} />
           </DialogContent>
         </Dialog>
       </div>
@@ -158,7 +158,7 @@ export default function CatProfilesPage() {
                 Update information for {editingProfile.name}.
               </DialogDescription>
             </DialogHeader>
-            <CatProfileForm
+            <CatProfileForm<UpdateCatProfileRequest>
               initialData={editingProfile}
               onSubmit={(data) => handleUpdateProfile(editingProfile.cat_uuid, data)}
             />
@@ -293,12 +293,12 @@ function CatProfileCard({ profile, onEdit, onDelete }: CatProfileCardProps) {
   );
 }
 
-interface CatProfileFormProps {
+type CatProfileFormProps<T> = {
   initialData?: Partial<CatProfile>;
-  onSubmit: (data: CreateCatProfileRequest | UpdateCatProfileRequest) => Promise<void>;
-}
+  onSubmit: (data: T) => Promise<void>;
+};
 
-function CatProfileForm({ initialData, onSubmit }: CatProfileFormProps) {
+function CatProfileForm<T>({ initialData, onSubmit }: CatProfileFormProps<T>) {
   const [formData, setFormData] = useState({
     name: initialData?.name || '',
     description: initialData?.description || '',
@@ -326,7 +326,7 @@ function CatProfileForm({ initialData, onSubmit }: CatProfileFormProps) {
         .map(activity => activity.trim())
         .filter(activity => activity.length > 0);
 
-      const submitData: any = {
+      const submitData: CreateCatProfileRequest | UpdateCatProfileRequest = {
         name: formData.name.trim(),
       };
 
@@ -344,7 +344,7 @@ function CatProfileForm({ initialData, onSubmit }: CatProfileFormProps) {
         submitData.favorite_activities = activities;
       }
 
-      await onSubmit(submitData);
+      await onSubmit(submitData as T);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save cat profile');
     } finally {
