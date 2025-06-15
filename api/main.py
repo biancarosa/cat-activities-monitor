@@ -113,7 +113,7 @@ async def lifespan(app: FastAPI):
         # Initialize services in dependency order
         config_service = ConfigService()
         database_service = DatabaseService()
-        detection_service = DetectionService()
+        detection_service = DetectionService(database_service)
         
         # Initialize async database
         await database_service.init_database()

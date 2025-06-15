@@ -3,6 +3,7 @@ Detection service for Cat Activities Monitor API.
 """
 
 import io
+import asyncio
 import logging
 import math
 import time
@@ -22,6 +23,7 @@ from models import (
     Detection, CatActivity, ActivityDetection, CatDetectionWithActivity,
     YOLOConfig, ChangeDetectionConfig, CatProfile
 )
+from services import DatabaseService
 
 logger = logging.getLogger(__name__)
 
@@ -50,7 +52,7 @@ COCO_CLASSES = {
 class DetectionService:
     """Service for YOLO object detection and activity analysis."""
     
-    def __init__(self):
+    def __init__(self, database_service: DatabaseService):
         self.ml_model: Optional[YOLO] = None
         self.cat_history: Dict[str, Deque[Dict]] = {}
         self.activity_history: Dict[str, Deque[ActivityDetection]] = {}
@@ -58,6 +60,7 @@ class DetectionService:
         
         # Predefined bright colors for bounding boxes
         self.box_colors = BOUNDING_BOX_COLORS
+        self.database_service = database_service
     
     def _get_cat_color(self, cat_uuid: Optional[str] = None, cat_index: int = 0) -> str:
         """Get a consistent color for a cat based on its profile, UUID, or index."""
@@ -69,7 +72,8 @@ class DetectionService:
     
     def _get_profile(self, cat_uuid: str) -> Optional[CatProfile]:
         """Get a cat profile by UUID."""
-        return self.cat_profiles.get(cat_uuid)
+        event_loop = asyncio.get_event_loop()
+        return event_loop.run_until_complete(self.database_service.get_cat_profile_by_uuid(cat_uuid))
     
     def initialize_ml_model(self, yolo_config: YOLOConfig) -> YOLO:
         """Initialize ML model for detection."""
