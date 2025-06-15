@@ -41,6 +41,7 @@ export default function ImageGallery({ className = '', onStatsUpdate }: ImageGal
   const [reprocessingAll, setReprocessingAll] = useState(false);
   const [reprocessingImages, setReprocessingImages] = useState<Set<string>>(new Set());
   const [feedbackStats, setFeedbackStats] = useState<{total: number, annotatedImages: number} | null>(null);
+  const [configLoaded, setConfigLoaded] = useState(() => configManager.isConfigLoaded());
 
   const fetchImages = useCallback(async () => {
     try {
@@ -146,8 +147,33 @@ export default function ImageGallery({ className = '', onStatsUpdate }: ImageGal
   };
 
   useEffect(() => {
-    fetchImages();
-  }, [fetchImages]);
+    if (configLoaded) {
+      fetchImages();
+    }
+  }, [fetchImages, configLoaded]);
+
+  // Listen for config loaded event and API URL changes
+  useEffect(() => {
+    const handleConfigLoaded = () => {
+      setConfigLoaded(true);
+    };
+
+    const handleApiUrlChanged = () => {
+      // Force refresh images when API URL changes
+      if (configLoaded) {
+        fetchImages();
+      }
+    };
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('configLoaded', handleConfigLoaded);
+      window.addEventListener('apiUrlChanged', handleApiUrlChanged);
+      return () => {
+        window.removeEventListener('configLoaded', handleConfigLoaded);
+        window.removeEventListener('apiUrlChanged', handleApiUrlChanged);
+      };
+    }
+  }, [configLoaded, fetchImages]);
 
   // Filter images by source
   const filteredImages = selectedSource === 'all' 

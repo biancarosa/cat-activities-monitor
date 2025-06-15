@@ -50,7 +50,6 @@ function Button({
   const Comp = asChild ? Slot : "button"
 
   return (
-    // @ts-expect-error - Node 24 + React 18 + Radix UI Slot compatibility
     <Comp
       data-slot="button"
       className={cn(buttonVariants({ variant, size, className }))}

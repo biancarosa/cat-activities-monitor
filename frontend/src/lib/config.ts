@@ -8,9 +8,15 @@ const DEFAULT_API_URL = 'http://localhost:8000';
 export class ConfigManager {
   private static instance: ConfigManager;
   private config: Map<string, string> = new Map();
+  private isClientLoaded = false;
 
   private constructor() {
-    this.loadConfig();
+    this.config.set(CONFIG_KEYS.API_URL, DEFAULT_API_URL);
+    // Defer client-side loading to avoid hydration mismatch
+    if (typeof window !== 'undefined') {
+      // Use setTimeout to ensure this runs after initial render
+      setTimeout(() => this.loadClientConfig(), 0);
+    }
   }
 
   public static getInstance(): ConfigManager {
@@ -20,23 +26,20 @@ export class ConfigManager {
     return ConfigManager.instance;
   }
 
-  private loadConfig(): void {
-    // Only access localStorage on the client side
-    if (typeof window !== 'undefined') {
+  private loadClientConfig(): void {
+    if (typeof window !== 'undefined' && !this.isClientLoaded) {
       try {
         const savedApiUrl = localStorage.getItem(CONFIG_KEYS.API_URL);
         if (savedApiUrl) {
           this.config.set(CONFIG_KEYS.API_URL, savedApiUrl);
-        } else {
-          this.config.set(CONFIG_KEYS.API_URL, DEFAULT_API_URL);
         }
+        this.isClientLoaded = true;
+        // Trigger a custom event to notify components that config is loaded
+        window.dispatchEvent(new CustomEvent('configLoaded'));
       } catch {
         console.warn('Failed to load config from localStorage');
-        this.config.set(CONFIG_KEYS.API_URL, DEFAULT_API_URL);
+        this.isClientLoaded = true;
       }
-    } else {
-      // Server-side fallback
-      this.config.set(CONFIG_KEYS.API_URL, DEFAULT_API_URL);
     }
   }
 
@@ -58,6 +61,8 @@ export class ConfigManager {
     if (typeof window !== 'undefined') {
       try {
         localStorage.setItem(CONFIG_KEYS.API_URL, url);
+        // Notify components that the API URL has changed
+        window.dispatchEvent(new CustomEvent('apiUrlChanged', { detail: { url } }));
       } catch {
         console.warn('Failed to save config to localStorage');
       }
@@ -71,6 +76,8 @@ export class ConfigManager {
     if (typeof window !== 'undefined') {
       try {
         localStorage.removeItem(CONFIG_KEYS.API_URL);
+        // Notify components that the API URL has changed
+        window.dispatchEvent(new CustomEvent('apiUrlChanged', { detail: { url: DEFAULT_API_URL } }));
       } catch {
         console.warn('Failed to remove config from localStorage');
       }
@@ -83,6 +90,10 @@ export class ConfigManager {
 
   public getDefaultApiUrl(): string {
     return DEFAULT_API_URL;
+  }
+
+  public isConfigLoaded(): boolean {
+    return this.isClientLoaded || typeof window === 'undefined';
   }
 }
 
