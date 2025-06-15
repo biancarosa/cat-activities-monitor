@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   Dialog, 
   DialogContent, 
@@ -27,7 +27,7 @@ import {
   Edit3,
   SkipForward
 } from 'lucide-react';
-import { DetectionImage, FeedbackAnnotation, ImageFeedback, feedbackApi } from '@/lib/api';
+import { DetectionImage, FeedbackAnnotation, ImageFeedback, feedbackApi, catProfileApi, CatProfile } from '@/lib/api';
 import { getCatColor, getCatColorLight } from '@/lib/colors';
 import { configManager } from '@/lib/config';
 import Image from 'next/image';
@@ -59,6 +59,7 @@ export default function FeedbackModal({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [catProfiles, setCatProfiles] = useState<CatProfile[]>([]);
   
   // Form state for each detected cat
   const [catAnnotations, setCatAnnotations] = useState<Record<number, {
@@ -67,6 +68,7 @@ export default function FeedbackModal({
     activityFeedback: string;
     confidence: number;
     feedbackType: 'confirm' | 'reject' | 'correct' | 'skip';
+    catProfileUuid: string;
   }>>({});
   
   const [notes, setNotes] = useState('');
@@ -196,6 +198,12 @@ export default function FeedbackModal({
       Label Cats
     </Button>
   );
+
+  useEffect(() => {
+    if (open) {
+      catProfileApi.list().then(res => setCatProfiles(res.cats)).catch(() => setCatProfiles([]));
+    }
+  }, [open]);
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -401,71 +409,18 @@ export default function FeedbackModal({
                           className="h-2 w-2 rounded-full"
                           style={{ backgroundColor: catColor }}
                         />
-                        <span>Detailed Annotations for Cat {index + 1}</span>
+                        <span>Cat Profile</span>
                       </Label>
-                      
-                      {/* Cat Name */}
-                      <div className="space-y-1">
-                        <Label htmlFor={`cat-name-${index}`} className="text-xs">Cat Name</Label>
-                        <Input
-                          id={`cat-name-${index}`}
-                          placeholder="e.g., Whiskers, Fluffy..."
-                          value={catAnnotations[index]?.catName || ''}
-                          onChange={(e) => handleCatAnnotationChange(index, 'catName', e.target.value)}
-                          className="border"
-                          style={{ borderColor: catColor + '40' }}
-                        />
-                      </div>
-                      
-                      {/* Activity */}
-                      <div className="space-y-1">
-                        <Label className="text-xs flex items-center space-x-1">
-                          <Activity className="h-3 w-3" />
-                          <span>Activity</span>
-                        </Label>
-                        <select
-                          className="w-full px-3 py-2 text-sm border rounded-md bg-background"
-                          style={{ borderColor: catColor + '40' }}
-                          value={catAnnotations[index]?.activity || 'unknown'}
-                          onChange={(e) => handleCatAnnotationChange(index, 'activity', e.target.value)}
-                        >
-                          {ACTIVITY_OPTIONS.map(activity => (
-                            <option key={activity} value={activity}>
-                              {activity.charAt(0).toUpperCase() + activity.slice(1)}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                      
-                      {/* Activity Feedback */}
-                      <div className="space-y-1">
-                        <Label htmlFor={`activity-feedback-${index}`} className="text-xs">Activity Description</Label>
-                        <Input
-                          id={`activity-feedback-${index}`}
-                          placeholder="Describe what the cat is doing..."
-                          value={catAnnotations[index]?.activityFeedback || ''}
-                          onChange={(e) => handleCatAnnotationChange(index, 'activityFeedback', e.target.value)}
-                          className="border"
-                          style={{ borderColor: catColor + '40' }}
-                        />
-                      </div>
-                      
-                      {/* Confidence */}
-                      <div className="space-y-1">
-                        <Label htmlFor={`confidence-${index}`} className="text-xs">Your Confidence (0.1-1.0)</Label>
-                        <Input
-                          id={`confidence-${index}`}
-                          type="number"
-                          min="0.1"
-                          max="1.0"
-                          step="0.1"
-                          placeholder="0.8"
-                          value={catAnnotations[index]?.confidence || ''}
-                          onChange={(e) => handleCatAnnotationChange(index, 'confidence', parseFloat(e.target.value) || 0.8)}
-                          className="border"
-                          style={{ borderColor: catColor + '40' }}
-                        />
-                      </div>
+                      <select
+                        className="w-full px-3 py-2 text-sm border rounded-md bg-background"
+                        value={catAnnotations[index]?.catProfileUuid || ''}
+                        onChange={e => handleCatAnnotationChange(index, 'catProfileUuid', e.target.value)}
+                      >
+                        <option value="">Select a cat profile...</option>
+                        {catProfiles.map(profile => (
+                          <option key={profile.cat_uuid} value={profile.cat_uuid}>{profile.name}</option>
+                        ))}
+                      </select>
                     </div>
                   )}
                   

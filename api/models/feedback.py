@@ -83,12 +83,6 @@ class FeedbackAnnotation(BaseModel):
         ge=0.0,
         le=1.0
     )
-    cat_name: Optional[str] = Field(
-        None, 
-        description="Optional name for the identified cat",
-        example="Whiskers",
-        max_length=50
-    )
     activity_feedback: Optional[str] = Field(
         None, 
         description="User's textual feedback about the cat's activity",
@@ -105,6 +99,11 @@ class FeedbackAnnotation(BaseModel):
         example=0.9,
         ge=0.0,
         le=1.0
+    )
+    cat_profile_uuid: Optional[str] = Field(
+        None,
+        description="UUID of the selected cat profile, if provided by the user",
+        example="550e8400-e29b-41d4-a716-446655440000"
     )
 
 

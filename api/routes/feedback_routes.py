@@ -65,45 +65,24 @@ async def submit_feedback(request: Request, feedback: ImageFeedback):
         
         # Process cat naming and profile updates
         for annotation in feedback.user_annotations:
-            if annotation.cat_name:
-                # Get existing profile or create new one
-                existing_profile = await database_service.get_cat_profile_by_name(annotation.cat_name)
-                
-                if existing_profile is None:
-                    # Create new cat profile
-                    new_profile = {
-                        'name': annotation.cat_name,
-                        'description': None,
-                        'color': None,
-                        'breed': None,
-                        'favorite_activities': [],
-                        'created_timestamp': datetime.now().isoformat(),
-                        'last_seen_timestamp': feedback.timestamp.isoformat(),
-                        'total_detections': 1,
-                        'average_confidence': annotation.confidence or 0.0,
-                        'preferred_locations': [feedback.image_filename.split('_')[0]]  # Extract source from filename
-                    }
-                    await database_service.save_cat_profile(annotation.cat_name, new_profile)
-                    logger.info(f"🐱 Created new cat profile: {annotation.cat_name}")
-                else:
-                    # Update existing cat profile
+            # Only update profile if cat_profile_uuid is provided
+            if annotation.cat_profile_uuid:
+                existing_profile = await database_service.get_cat_profile_by_uuid(annotation.cat_profile_uuid)
+                if existing_profile is not None:
                     profile = existing_profile.copy()
                     profile['last_seen_timestamp'] = feedback.timestamp.isoformat()
                     profile['total_detections'] = profile.get('total_detections', 0) + 1
-                    
                     # Update average confidence
                     old_avg = profile.get('average_confidence', 0.0)
                     total_detections = profile['total_detections']
                     new_confidence = annotation.confidence or 0.0
                     profile['average_confidence'] = ((old_avg * (total_detections - 1)) + new_confidence) / total_detections
-                    
                     # Update preferred locations
                     source_location = feedback.image_filename.split('_')[0]
                     preferred_locations = profile.get('preferred_locations', [])
                     if source_location not in preferred_locations:
                         preferred_locations.append(source_location)
                         profile['preferred_locations'] = preferred_locations
-                    
                     # Update favorite activities if provided
                     if annotation.correct_activity:
                         favorite_activities = profile.get('favorite_activities', [])
@@ -111,14 +90,13 @@ async def submit_feedback(request: Request, feedback: ImageFeedback):
                         if activity_value not in favorite_activities:
                             favorite_activities.append(activity_value)
                             profile['favorite_activities'] = favorite_activities
-                    
-                    await database_service.save_cat_profile(annotation.cat_name, profile)
-                    logger.info(f"🐱 Updated cat profile: {annotation.cat_name} (Total detections: {profile['total_detections']})")
+                    await database_service.save_cat_profile(profile['cat_uuid'], profile)
+                    logger.info(f"🐱 Updated cat profile: {profile.get('name')} (Total detections: {profile['total_detections']})")
         
         logger.info(f"📝 Feedback submitted for {feedback.image_filename}: {feedback.feedback_type}")
         logger.info(f"   Original detections: {len(feedback.original_detections)}")
         logger.info(f"   User annotations: {len(feedback.user_annotations)}")
-        logger.info(f"   Named cats: {[ann.cat_name for ann in feedback.user_annotations if ann.cat_name]}")
+        # logger.info(f"   Named cats: {[ann.cat_profile_uuid for ann in feedback.user_annotations if ann.cat_profile_uuid]}")
         logger.info(f"   Activity feedback: {[ann.activity_feedback for ann in feedback.user_annotations if ann.activity_feedback]}")
         logger.info(f"   Original path: {image_path}")
         logger.info(f"   Resolved path: {actual_path}")
@@ -130,7 +108,7 @@ async def submit_feedback(request: Request, feedback: ImageFeedback):
             "image_filename": feedback.image_filename,
             "feedback_type": feedback.feedback_type,
             "annotations_count": len(feedback.user_annotations),
-            "named_cats": [ann.cat_name for ann in feedback.user_annotations if ann.cat_name],
+            # "named_cats": [ann.cat_profile_uuid for ann in feedback.user_annotations if ann.cat_profile_uuid],
             "activity_feedback_count": len([ann for ann in feedback.user_annotations if ann.activity_feedback]),
             "timestamp": feedback.timestamp.isoformat(),
             "persisted": True
