@@ -133,9 +133,6 @@ async def lifespan(app: FastAPI):
         detection_service.initialize_ml_model(config.global_.ml_model_config)
         logger.info(f"🤖 ML model loaded: {config.global_.ml_model_config.model}")
         
-        # Load activity history and previous detections from database
-        await detection_service.load_activity_history_from_database(database_service)
-        
         # Store services in app state for dependency injection
         app.state.config_service = config_service
         app.state.database_service = database_service

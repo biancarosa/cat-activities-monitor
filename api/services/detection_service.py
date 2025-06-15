@@ -20,7 +20,7 @@ import cv2
 from skimage.metrics import structural_similarity as ssim
 
 from models import (
-    Detection, CatActivity, ActivityDetection, CatDetectionWithActivity,
+    Detection, ImageDetections,
     YOLOConfig, ChangeDetectionConfig, CatProfile
 )
 from services import DatabaseService
@@ -50,12 +50,10 @@ COCO_CLASSES = {
 
 
 class DetectionService:
-    """Service for YOLO object detection and activity analysis."""
+    """Service for YOLO object detection."""
     
     def __init__(self, database_service: DatabaseService):
         self.ml_model: Optional[YOLO] = None
-        self.cat_history: Dict[str, Deque[Dict]] = {}
-        self.activity_history: Dict[str, Deque[ActivityDetection]] = {}
         self.previous_detections: Dict[str, Dict] = {}
         
         # Predefined bright colors for bounding boxes
@@ -63,17 +61,14 @@ class DetectionService:
         self.database_service = database_service
     
     def _get_cat_color(self, cat_uuid: Optional[str] = None, cat_index: int = 0) -> str:
-        """Get a consistent color for a cat based on its profile, UUID, or index."""
-        if cat_uuid:
-            profile = self._get_profile(cat_uuid)
-            if profile:
-                return profile.bounding_box_color
+        """Get a color for a cat based on its index."""
+        # if cat_uuid:
+        #     # get running event loop
+        #     event_loop = asyncio.get_event_loop()
+        #     profile = event_loop.run_until_complete(self.database_service.get_cat_profile_by_uuid(cat_uuid))
+        #     if profile:
+        #         return profile.bounding_box_color
         return self.box_colors[cat_index % len(self.box_colors)]
-    
-    def _get_profile(self, cat_uuid: str) -> Optional[CatProfile]:
-        """Get a cat profile by UUID."""
-        event_loop = asyncio.get_event_loop()
-        return event_loop.run_until_complete(self.database_service.get_cat_profile_by_uuid(cat_uuid))
     
     def initialize_ml_model(self, yolo_config: YOLOConfig) -> YOLO:
         """Initialize ML model for detection."""
@@ -102,288 +97,6 @@ class DetectionService:
             logger.error(f"Failed to load ML model {yolo_config.model}: {e}")
             raise
     
-    async def load_activity_history_from_database(self, database_service):
-        """Load activity history and previous detections from database after server restart."""
-        try:
-            logger.info("🔄 Loading activity history and previous detections from database...")
-            
-            # Get recent detection results from database
-            recent_results = await database_service.get_recent_detection_results(limit_per_source=10)
-            
-            loaded_sources = 0
-            loaded_activities = 0
-            loaded_detections = 0
-            
-            for source_name, detection_results in recent_results.items():
-                if not detection_results:
-                    continue
-                    
-                loaded_sources += 1
-                
-                # Initialize activity history for this source
-                if source_name not in self.activity_history:
-                    self.activity_history[source_name] = deque(maxlen=10)
-                
-                # Load activities from recent detections (in reverse chronological order)
-                for result in reversed(detection_results):  # Reverse to get chronological order
-                    if result.get('activities'):
-                        for activity_data in result['activities']:
-                            try:
-                                # Convert activity data back to ActivityDetection object
-                                from models import CatActivity, ActivityDetection
-                                
-                                activity = ActivityDetection(
-                                    activity=CatActivity(activity_data['activity']),
-                                    confidence=activity_data['confidence'],
-                                    reasoning=activity_data['reasoning'],
-                                    bounding_box=activity_data['bounding_box'],
-                                    duration_seconds=activity_data.get('duration_seconds'),
-                                    cat_index=activity_data.get('cat_index'),
-                                    detection_id=activity_data.get('detection_id')
-                                )
-                                
-                                self.activity_history[source_name].append(activity)
-                                loaded_activities += 1
-                                
-                            except Exception as e:
-                                logger.warning(f"Failed to load activity from database: {e}")
-                
-                # Load the most recent detection for previous_detections comparison
-                latest_result = detection_results[0]  # First item is most recent
-                if latest_result.get('detected'):
-                    self.previous_detections[source_name] = {
-                        "detected": latest_result["detected"],
-                        "count": latest_result["count"],
-                        "confidence": latest_result["confidence"],
-                        "detections": latest_result["detections"],
-                        "activities": latest_result["activities"],
-                        "timestamp": latest_result["timestamp"]
-                        # Note: image_array is not stored in database, so it won't be available for similarity comparison
-                    }
-                    loaded_detections += 1
-            
-            logger.info(f"✅ Loaded activity history from database: {loaded_sources} sources, {loaded_activities} activities, {loaded_detections} previous detections")
-            
-        except Exception as e:
-            logger.error(f"❌ Failed to load activity history from database: {e}")
-            # Don't raise the exception - the service should still work without historical data
-    
-    def analyze_cat_pose_activity(self, detection: Detection, image_width: int, image_height: int, cat_index: int = 0) -> ActivityDetection:
-        """
-        Analyze cat pose to determine basic activity based on bounding box characteristics.
-        This is a simplified approach - more sophisticated methods would use keypoint detection.
-        """
-        bbox = detection.bounding_box
-        width = bbox["width"]
-        height = bbox["height"]
-        aspect_ratio = width / height if height > 0 else 1.0
-        
-        # Calculate relative position in image
-        center_x = (bbox["x1"] + bbox["x2"]) / 2
-        center_y = (bbox["y1"] + bbox["y2"]) / 2
-        relative_y = center_y / image_height if image_height > 0 else 0.5
-        
-        # Generate unique detection ID for this specific detection
-        detection_id = f"cat_{cat_index}_{int(center_x)}_{int(center_y)}"
-        
-        # Basic activity detection based on bounding box analysis
-        activity = CatActivity.UNKNOWN
-        confidence = 0.6  # Base confidence for pose-based detection
-        reasoning = ""
-        
-        # Lying down: wide and short bounding box
-        if aspect_ratio > 1.8:
-            activity = CatActivity.LYING
-            confidence = min(0.85, 0.6 + (aspect_ratio - 1.8) * 0.3)
-            reasoning = f"Cat {cat_index + 1}: Wide bounding box (aspect ratio: {aspect_ratio:.2f}) suggests lying position"
-        
-        # Sitting: more square bounding box, typically in lower part of image
-        elif 0.8 <= aspect_ratio <= 1.4 and relative_y > 0.6:
-            activity = CatActivity.SITTING
-            confidence = 0.75
-            reasoning = f"Cat {cat_index + 1}: Square-ish bounding box (aspect ratio: {aspect_ratio:.2f}) in lower image area suggests sitting"
-        
-        # Standing: taller bounding box
-        elif aspect_ratio < 0.8:
-            activity = CatActivity.STANDING
-            confidence = 0.7
-            reasoning = f"Cat {cat_index + 1}: Tall bounding box (aspect ratio: {aspect_ratio:.2f}) suggests standing position"
-        
-        # Default to unknown with lower confidence
-        else:
-            activity = CatActivity.UNKNOWN
-            confidence = 0.4
-            reasoning = f"Cat {cat_index + 1}: Bounding box characteristics (aspect ratio: {aspect_ratio:.2f}) don't clearly indicate specific pose"
-        
-        return ActivityDetection(
-            activity=activity,
-            confidence=confidence,
-            reasoning=reasoning,
-            bounding_box=bbox,
-            cat_index=cat_index,
-            detection_id=detection_id
-        )
-    
-    def detect_movement_activity(self, image_name: str, current_detections: List[Detection]) -> List[ActivityDetection]:
-        """
-        Detect movement-based activities by comparing with previous detections.
-        """
-        activities = []
-        
-        if image_name not in self.cat_history:
-            self.cat_history[image_name] = deque(maxlen=5)  # Keep last 5 detections
-        
-        current_time = time.time()
-        
-        # Store current detection with timestamp
-        self.cat_history[image_name].append({
-            'timestamp': current_time,
-            'detections': current_detections
-        })
-        
-        # Need at least 2 detections to analyze movement
-        if len(self.cat_history[image_name]) < 2:
-            return activities
-        
-        # Compare with previous detection
-        prev_data = self.cat_history[image_name][-2]
-        prev_detections = prev_data['detections']
-        time_diff = current_time - prev_data['timestamp']
-        
-        # Match current detections with previous ones (simple distance-based matching)
-        for cat_index, curr_det in enumerate(current_detections):
-            curr_center_x = (curr_det.bounding_box["x1"] + curr_det.bounding_box["x2"]) / 2
-            curr_center_y = (curr_det.bounding_box["y1"] + curr_det.bounding_box["y2"]) / 2
-            
-            # Generate detection ID for this cat
-            detection_id = f"cat_{cat_index}_{int(curr_center_x)}_{int(curr_center_y)}"
-            
-            # Find closest previous detection
-            min_distance = float('inf')
-            closest_prev = None
-            
-            for prev_det in prev_detections:
-                prev_center_x = (prev_det.bounding_box["x1"] + prev_det.bounding_box["x2"]) / 2
-                prev_center_y = (prev_det.bounding_box["y1"] + prev_det.bounding_box["y2"]) / 2
-                
-                distance = math.sqrt((curr_center_x - prev_center_x)**2 + (curr_center_y - prev_center_y)**2)
-                if distance < min_distance:
-                    min_distance = distance
-                    closest_prev = prev_det
-            
-            # Analyze movement
-            if closest_prev and time_diff > 0:
-                # Calculate movement speed (pixels per second)
-                speed = min_distance / time_diff
-                
-                # Determine activity based on movement
-                if speed > 50:  # Fast movement
-                    activity = CatActivity.MOVING
-                    confidence = min(0.9, 0.6 + (speed - 50) / 100)
-                    reasoning = f"Cat {cat_index + 1}: Fast movement detected (speed: {speed:.1f} pixels/sec)"
-                elif speed > 20:  # Moderate movement - could be playing
-                    activity = CatActivity.PLAYING
-                    confidence = 0.7
-                    reasoning = f"Cat {cat_index + 1}: Moderate movement suggests playing (speed: {speed:.1f} pixels/sec)"
-                elif speed < 5:  # Very little movement
-                    # Check if cat is in eating position (lower part of image, specific pose)
-                    relative_y = curr_center_y / 480  # Assume standard image height
-                    if relative_y > 0.7 and curr_det.bounding_box["width"] / curr_det.bounding_box["height"] > 1.2:
-                        activity = CatActivity.EATING
-                        confidence = 0.65
-                        reasoning = f"Cat {cat_index + 1}: Stationary in lower image area with horizontal pose suggests eating"
-                    else:
-                        activity = CatActivity.SLEEPING
-                        confidence = 0.6
-                        reasoning = f"Cat {cat_index + 1}: Very little movement suggests sleeping/resting (speed: {speed:.1f} pixels/sec)"
-                else:
-                    continue  # Normal small movements, don't classify as specific activity
-                
-                activities.append(ActivityDetection(
-                    activity=activity,
-                    confidence=confidence,
-                    reasoning=reasoning,
-                    bounding_box=curr_det.bounding_box,
-                    cat_index=cat_index,
-                    detection_id=detection_id
-                ))
-        
-        return activities
-    
-    def analyze_temporal_patterns(self, image_name: str, activities: List[ActivityDetection]) -> List[ActivityDetection]:
-        """
-        Analyze temporal patterns to improve activity detection confidence and detect longer-term activities.
-        Only enhances activities for cats that actually exist in the current image.
-        """
-        if image_name not in self.activity_history:
-            self.activity_history[image_name] = deque(maxlen=10)  # Keep last 10 activity detections
-        
-        # Add current activities to history
-        for activity in activities:
-            self.activity_history[image_name].append(activity)
-        
-        # Get the cat indices that actually exist in the current image
-        current_cat_indices = set(activity.cat_index for activity in activities if activity.cat_index is not None)
-        
-        # Start with current activities as base - this ensures we only work with cats that exist in this image
-        image_activities = []
-        
-        if len(self.activity_history[image_name]) >= 3 and current_cat_indices:
-            # Look for consistent activities, but only for cats that exist in the current image
-            recent_activities = list(self.activity_history[image_name])[-3:]
-            
-            # Track which cat indices have been enhanced
-            cat_indices = set()
-            
-            # For each cat that exists in the current image, check if we can enhance its activity
-            for current_cat_index in current_cat_indices:
-                # Find activities for this specific cat index in recent history
-                cat_activities = [act for act in recent_activities if act.cat_index == current_cat_index]
-                
-                if len(cat_activities) >= 2:  # Cat has been detected in at least 2 recent frames
-                    # Group by activity type for this specific cat
-                    activity_counts = {}
-                    for act in cat_activities:
-                        if act.activity not in activity_counts:
-                            activity_counts[act.activity] = []
-                        activity_counts[act.activity].append(act)
-                    
-                    # Find the most consistent activity for this cat
-                    best_activity = None
-                    best_count = 0
-                    
-                    for activity_type, detections in activity_counts.items():
-                        if len(detections) > best_count:
-                            best_activity = activity_type
-                            best_count = len(detections)
-                    
-                    # If we found a consistent activity, enhance it
-                    if best_activity and best_count >= 2:
-                        relevant_detections = activity_counts[best_activity]
-                        avg_confidence = sum(d.confidence for d in relevant_detections) / len(relevant_detections)
-                        boosted_confidence = min(0.95, avg_confidence + 0.15)  # Boost confidence
-                        
-                        activity = ActivityDetection(
-                            activity=best_activity,
-                            confidence=boosted_confidence,
-                            reasoning=f"Consistent {best_activity.value} detected across {best_count} recent observations",
-                            bounding_box=relevant_detections[-1].bounding_box,  # Use most recent bounding box
-                            duration_seconds=best_count * 30,  # Estimate duration (assuming 30s intervals)
-                            cat_index=current_cat_index
-                        )
-                        image_activities.append(activity)
-                        cat_indices.add(current_cat_index)
-            
-            # Add current activities for cats that weren't enhanced (to ensure all cats have activities)
-            for activity in activities:
-                if activity.cat_index not in cat_indices:
-                    image_activities.append(activity)
-            
-            return image_activities
-        
-        # If no temporal enhancement was possible, return original activities
-        return activities
-    
     def calculate_image_similarity(self, img1_array: np.ndarray, img2_array: np.ndarray) -> float:
         """Calculate similarity between two images using structural similarity."""
         try:
@@ -406,7 +119,7 @@ class DetectionService:
     
     def has_significant_change(
         self,
-        current_result: CatDetectionWithActivity,
+        current_result: ImageDetections,
         previous_result: Optional[Dict],
         current_image: np.ndarray,
         change_config: ChangeDetectionConfig
@@ -429,11 +142,11 @@ class DetectionService:
         
         # Check detection count change
         prev_count = previous_result.get("count", 0)
-        if current_result.count != prev_count:
-            return True, f"detection_count_changed_{prev_count}_to_{current_result.count}"
+        if current_result.cats_count != prev_count:
+            return True, f"detection_count_changed_{prev_count}_to_{current_result.cats_count}"
         
         # If no detections in both, skip unless image is very different
-        if current_result.count == 0 and prev_count == 0:
+        if current_result.cats_count == 0 and prev_count == 0:
             return False, "no_detections_similar_image"
         
         # Check confidence changes
@@ -468,7 +181,7 @@ class DetectionService:
         
         return False, "no_significant_change"
     
-    def detect_objects_with_activity(self, image_data: bytes, yolo_config: YOLOConfig, image_name: str = "unknown") -> CatDetectionWithActivity:
+    def detect_objects_with_activity(self, image_data: bytes, yolo_config: YOLOConfig, image_name: str = "unknown") -> ImageDetections:
         """
         Enhanced object detection that includes cat activity recognition.
         """
@@ -538,51 +251,11 @@ class DetectionService:
                             target_detections.append(detection)
                             max_confidence = max(max_confidence, confidence)
             
-            # Analyze activities for detected cats
-            all_activities = []
-            
-            if target_detections:
-                # 1. Pose-based activity detection
-                for cat_index, detection in enumerate(target_detections):
-                    if detection.class_id in [15, 16]:  # Cat or dog class
-                        pose_activity = self.analyze_cat_pose_activity(detection, image_width, image_height, cat_index)
-                        all_activities.append(pose_activity)
-                
-                # 2. Movement-based activity detection
-                movement_activities = self.detect_movement_activity(image_name, target_detections)
-                all_activities.extend(movement_activities)
-                
-                # 3. Temporal pattern analysis
-                all_activities = self.analyze_temporal_patterns(image_name, all_activities)
-                
-                # 4. Enhance activities using previous analysis results (without changing saved detections)
-                all_activities = self.enhance_activities_with_history(image_name, all_activities)
-            
-            # Create cat-specific activity mapping
-            cat_activities = {}
-            if all_activities:
-                for activity in all_activities:
-                    if activity.cat_index is not None:
-                        cat_key = str(activity.cat_index)  # Use string index for consistency
-                        if cat_key not in cat_activities:
-                            cat_activities[cat_key] = []
-                        cat_activities[cat_key].append(activity)
-            
-            # Determine primary activity (highest confidence)
-            primary_activity = None
-            if all_activities:
-                primary_activity = max(all_activities, key=lambda x: x.confidence).activity
-            
-            # Create detection result
-            detection_result = CatDetectionWithActivity(
-                detected=len(target_detections) > 0,
+            detection_result = ImageDetections(
+                cat_detected=len(target_detections) > 0,
                 confidence=max_confidence,
-                count=len(target_detections),
+                cats_count=len(target_detections),
                 detections=target_detections,
-                total_animals=len([d for d in all_detections if d.class_id in range(14, 24)]),
-                activities=all_activities,
-                primary_activity=primary_activity,
-                cat_activities=cat_activities
             )
             
             # Check if we should save the image (change detection)
@@ -600,15 +273,15 @@ class DetectionService:
             
             # Save detection image if enabled and significant change detected
             if yolo_config.save_detection_images and target_detections and should_save:
-                self._save_detection_image(image_array, target_detections, all_activities, yolo_config, image_name, save_reason)
+                self._save_detection_image(image_array, target_detections, yolo_config, image_name, save_reason)
             elif yolo_config.save_detection_images and not should_save:
                 logger.debug(f"⏭️  Skipped saving image for '{image_name}' (reason: {save_reason})")
             
             # Store current detection for future comparison
             if yolo_config.change_detection.enabled:
                 self.previous_detections[image_name] = {
-                    "detected": detection_result.detected,
-                    "count": detection_result.count,
+                    "cat_detected": detection_result.cat_detected,
+                    "cats_count": detection_result.cats_count,
                     "confidence": detection_result.confidence,
                     "detections": [
                         {
@@ -618,15 +291,6 @@ class DetectionService:
                             "bounding_box": d.bounding_box
                         } for d in detection_result.detections
                     ],
-                    "activities": [
-                        {
-                            "activity": a.activity.value,
-                            "confidence": a.confidence,
-                            "reasoning": a.reasoning,
-                            "cat_index": a.cat_index,
-                            "detection_id": a.detection_id
-                        } for a in detection_result.activities
-                    ],
                     "image_array": image_array.copy(),  # Store for image similarity comparison
                     "timestamp": datetime.now().isoformat()
                 }
@@ -635,18 +299,16 @@ class DetectionService:
             
         except Exception as e:
             logger.error(f"Error during object detection with activity analysis: {e}")
-            return CatDetectionWithActivity(
-                detected=False,
+            return ImageDetections(
+                cat_detected=False,
                 confidence=0.0,
                 count=0,
                 detections=[],
-                total_animals=0,
-                activities=[],
-                primary_activity=None
+                cats_count=0,
             )
     
     def _save_detection_image(self, image_array: np.ndarray, target_detections: List[Detection], 
-                             all_activities: List[ActivityDetection], yolo_config: YOLOConfig, 
+                             yolo_config: YOLOConfig, 
                              image_name: str, save_reason: str, database_service=None):
         """Save detection image with annotations."""
         try:
@@ -681,17 +343,11 @@ class DetectionService:
                 # Get color for this cat using UUID if available
                 color = self._get_cat_color(cat_uuid=detection.cat_uuid, cat_index=cat_index)
                 
-                label = "cat"
-
                 # Draw bounding box with thicker lines
                 draw.rectangle([x1, y1, x2, y2], outline=color, width=4)
                 # Prepare labels
                 confidence_label = f"{detection.class_name} {detection.confidence:.2f}"
-                cat_name = self._get_cat_name(detection.cat_uuid)
-                if cat_name:
-                    cat_label = f"Cat {cat_index + 1}: {cat_name}"
-                else:
-                    cat_label = f"Cat {cat_index + 1}"
+                cat_label = f"Cat {cat_index + 1}"
                 
                 # Draw labels with background for better readability
                 # Calculate label positions
@@ -722,90 +378,3 @@ class DetectionService:
         except Exception as e:
             logger.error(f"Failed to save detection image: {e}")
     
-    def get_activity_history(self, image_name: str) -> List[ActivityDetection]:
-        """Get activity history for a specific image source."""
-        if image_name not in self.activity_history:
-            return []
-        return list(self.activity_history[image_name])
-    
-    def get_activity_summary(self) -> Dict:
-        """Get a summary of all recent activities across all image sources."""
-        summary = {}
-        
-        for image_name, history in self.activity_history.items():
-            if history:
-                recent_activities = list(history)[-5:]  # Last 5 activities
-                activity_counts = {}
-                
-                for activity in recent_activities:
-                    act_name = activity.activity.value
-                    if act_name not in activity_counts:
-                        activity_counts[act_name] = {
-                            "count": 0,
-                            "avg_confidence": 0,
-                            "latest_reasoning": ""
-                        }
-                    activity_counts[act_name]["count"] += 1
-                    activity_counts[act_name]["avg_confidence"] += activity.confidence
-                    activity_counts[act_name]["latest_reasoning"] = activity.reasoning
-                
-                # Calculate averages
-                for act_name in activity_counts:
-                    activity_counts[act_name]["avg_confidence"] /= activity_counts[act_name]["count"]
-                
-                summary[image_name] = {
-                    "recent_activities": activity_counts,
-                    "total_history_records": len(history)
-                }
-        
-        return summary
-    
-    def enhance_activities_with_history(self, image_name: str, current_activities: List[ActivityDetection]) -> List[ActivityDetection]:
-        """
-        Enhance current activities using previous analysis results.
-        This uses historical data to improve confidence and reasoning, but never changes saved detections.
-        """
-        if image_name not in self.previous_detections:
-            return current_activities
-        
-        previous_result = self.previous_detections[image_name]
-        previous_activities = previous_result.get("activities", [])
-        
-        if not previous_activities:
-            return current_activities
-        
-        activities = []
-        
-        for current_activity in current_activities:
-            activity = current_activity
-            
-            # Look for similar activities in previous detections for the same cat
-            for prev_act_data in previous_activities:
-                if (prev_act_data.get("cat_index") == current_activity.cat_index and
-                    prev_act_data.get("activity") == current_activity.activity.value):
-                    
-                    # If we found the same activity for the same cat, we can boost confidence
-                    prev_confidence = prev_act_data.get("confidence", 0.0)
-                    
-                    # Boost confidence if previous detection was more confident
-                    if prev_confidence > current_activity.confidence:
-                        boosted_confidence = min(0.95, (current_activity.confidence + prev_confidence) / 2 + 0.1)
-                        reasoning = f"{current_activity.reasoning} (Enhanced with previous detection: {prev_confidence:.2f})"
-                        
-                        activity = ActivityDetection(
-                            activity=current_activity.activity,
-                            confidence=boosted_confidence,
-                            reasoning=reasoning,
-                            bounding_box=current_activity.bounding_box,
-                            duration_seconds=current_activity.duration_seconds,
-                            cat_index=current_activity.cat_index,
-                            detection_id=current_activity.detection_id
-                        )
-                        
-                        logger.debug(f"🔄 Enhanced activity for cat {current_activity.cat_index}: {current_activity.activity.value} "
-                                   f"confidence {current_activity.confidence:.2f} -> {boosted_confidence:.2f}")
-                        break
-            
-            activities.append(activity)
-        
-        return activities 

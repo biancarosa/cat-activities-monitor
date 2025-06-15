@@ -478,12 +478,44 @@
         "summary": "List Detection Images",
         "description": "Get list of detection images with metadata and annotation information.",
         "operationId": "get_detection_images_detections_images_get",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 1,
+              "title": "Page"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 20,
+              "title": "Limit"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "List of detection images with metadata",
             "content": {
               "application/json": {
                 "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
               }
             }
           }
@@ -1127,7 +1159,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/CatProfile"
+                "$ref": "#/components/schemas/CreateCatProfileRequest"
               }
             }
           },
@@ -1155,22 +1187,22 @@
         }
       }
     },
-    "/cats/{cat_name}": {
+    "/cats/{cat_uuid}": {
       "get": {
         "tags": [
           "cats"
         ],
         "summary": "Get Cat Profile",
         "description": "Get detailed information about a specific cat.",
-        "operationId": "get_cat_profile_cats__cat_name__get",
+        "operationId": "get_cat_profile_cats__cat_uuid__get",
         "parameters": [
           {
-            "name": "cat_name",
+            "name": "cat_uuid",
             "in": "path",
             "required": true,
             "schema": {
               "type": "string",
-              "title": "Cat Name"
+              "title": "Cat Uuid"
             }
           }
         ],
@@ -1201,15 +1233,15 @@
         ],
         "summary": "Update Cat Profile",
         "description": "Update an existing cat profile.",
-        "operationId": "update_cat_profile_cats__cat_name__put",
+        "operationId": "update_cat_profile_cats__cat_uuid__put",
         "parameters": [
           {
-            "name": "cat_name",
+            "name": "cat_uuid",
             "in": "path",
             "required": true,
             "schema": {
               "type": "string",
-              "title": "Cat Name"
+              "title": "Cat Uuid"
             }
           }
         ],
@@ -1218,7 +1250,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/CatProfile"
+                "$ref": "#/components/schemas/UpdateCatProfileRequest"
               }
             }
           }
@@ -1250,15 +1282,15 @@
         ],
         "summary": "Delete Cat Profile",
         "description": "Delete a cat profile.",
-        "operationId": "delete_cat_profile_cats__cat_name__delete",
+        "operationId": "delete_cat_profile_cats__cat_uuid__delete",
         "parameters": [
           {
-            "name": "cat_name",
+            "name": "cat_uuid",
             "in": "path",
             "required": true,
             "schema": {
               "type": "string",
-              "title": "Cat Name"
+              "title": "Cat Uuid"
             }
           }
         ],
@@ -1284,14 +1316,14 @@
         }
       }
     },
-    "/cats/{cat_name}/activity-history": {
+    "/cats/by-name/{cat_name}/activity-history": {
       "get": {
         "tags": [
           "cats"
         ],
         "summary": "Get Cat Activity History",
         "description": "Get activity history for a specific named cat.",
-        "operationId": "get_cat_activity_history_cats__cat_name__activity_history_get",
+        "operationId": "get_cat_activity_history_cats_by_name__cat_name__activity_history_get",
         "parameters": [
           {
             "name": "cat_name",
@@ -1401,7 +1433,7 @@
         "title": "CatActivity",
         "description": "Enumeration of detectable cat activities.\n\nThese activities are recognized through pose analysis and behavioral patterns."
       },
-      "CatProfile": {
+      "CreateCatProfileRequest": {
         "properties": {
           "name": {
             "type": "string",
@@ -1455,70 +1487,19 @@
           },
           "favorite_activities": {
             "items": {
-              "$ref": "#/components/schemas/CatActivity"
-            },
-            "type": "array",
-            "title": "Favorite Activities",
-            "description": "List of activities this cat is commonly observed doing"
-          },
-          "created_timestamp": {
-            "type": "string",
-            "format": "date-time",
-            "title": "Created Timestamp",
-            "description": "When this cat profile was first created",
-            "example": "2023-12-01T14:30:22.123456"
-          },
-          "last_seen_timestamp": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "date-time"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Last Seen Timestamp",
-            "description": "When this cat was last detected in any camera",
-            "example": "2023-12-01T16:45:30.789012"
-          },
-          "total_detections": {
-            "type": "integer",
-            "minimum": 0.0,
-            "title": "Total Detections",
-            "description": "Total number of times this cat has been detected",
-            "default": 0,
-            "example": 127
-          },
-          "average_confidence": {
-            "type": "number",
-            "maximum": 1.0,
-            "minimum": 0.0,
-            "title": "Average Confidence",
-            "description": "Average detection confidence score for this cat",
-            "default": 0.0,
-            "example": 0.87
-          },
-          "preferred_locations": {
-            "items": {
               "type": "string"
             },
             "type": "array",
-            "title": "Preferred Locations",
-            "description": "Camera/image sources where this cat is commonly seen",
-            "example": [
-              "living_room_camera",
-              "kitchen_camera"
-            ]
+            "title": "Favorite Activities",
+            "description": "List of activities this cat is commonly observed doing (as strings)"
           }
         },
         "type": "object",
         "required": [
-          "name",
-          "created_timestamp"
+          "name"
         ],
-        "title": "CatProfile",
-        "description": "Profile for a named cat with their characteristics.\n\nContains identification information, physical characteristics,\nbehavioral patterns, and detection statistics for individual cats."
+        "title": "CreateCatProfileRequest",
+        "description": "Request model for creating a new cat profile."
       },
       "Detection": {
         "properties": {
@@ -1558,6 +1539,19 @@
               "y1": 150.2,
               "y2": 400.1
             }
+          },
+          "cat_uuid": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cat Uuid",
+            "description": "Unique identifier for this cat detection",
+            "example": "550e8400-e29b-41d4-a716-446655440000"
           }
         },
         "type": "object",
@@ -1604,20 +1598,6 @@
             "description": "User-provided confidence rating for this annotation",
             "example": 0.95
           },
-          "cat_name": {
-            "anyOf": [
-              {
-                "type": "string",
-                "maxLength": 50
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Cat Name",
-            "description": "Optional name for the identified cat",
-            "example": "Whiskers"
-          },
           "activity_feedback": {
             "anyOf": [
               {
@@ -1657,6 +1637,19 @@
             "title": "Activity Confidence",
             "description": "User's confidence in their activity assessment",
             "example": 0.9
+          },
+          "cat_profile_uuid": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cat Profile Uuid",
+            "description": "UUID of the selected cat profile, if provided by the user",
+            "example": "550e8400-e29b-41d4-a716-446655440000"
           }
         },
         "type": "object",
@@ -1802,6 +1795,129 @@
         "type": "object",
         "title": "ModelRetrainRequest",
         "description": "Request model for retraining with custom model name.\n\nUsed to initiate model retraining with feedback data and specify\na custom name for the resulting model."
+      },
+      "UpdateCatProfileRequest": {
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "color": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Color"
+          },
+          "breed": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Breed"
+          },
+          "favorite_activities": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Favorite Activities"
+          },
+          "last_seen_timestamp": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Seen Timestamp"
+          },
+          "total_detections": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total Detections"
+          },
+          "average_confidence": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Average Confidence"
+          },
+          "preferred_locations": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Preferred Locations"
+          },
+          "bounding_box_color": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bounding Box Color"
+          }
+        },
+        "type": "object",
+        "title": "UpdateCatProfileRequest"
       },
       "ValidationError": {
         "properties": {

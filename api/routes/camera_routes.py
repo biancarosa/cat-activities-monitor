@@ -86,9 +86,9 @@ async def list_cameras(request: Request):
                         "url": "http://camera1.local/snapshot.jpg",
                         "success": True,
                         "detection": {
-                            "detected": True,
+                            "cat_detected": True,
                             "confidence": 0.89,
-                            "count": 2,
+                            "cats_count": 2,
                             "detections": [
                                 {
                                     "class_id": 15,
@@ -103,9 +103,10 @@ async def list_cameras(request: Request):
                                     }
                                 }
                             ],
-                            "total_animals": 2,
+                            "total_cats": 2,
                             "activities": []
-                        }
+                        },
+                        "data_source": "postgresql_database"
                     }
                 }
             }
@@ -148,7 +149,8 @@ async def fetch_camera_image(request: Request, camera_name: str):
                 "message": f"Successfully fetched '{camera_name}'",
                 "camera_name": camera_name,
                 "url": str(image_config.url),
-                **result
+                **result,
+                "data_source": "postgresql_database"
             }
         else:
             logger.error(f"❌ Failed to fetch '{camera_name}': {result.get('error', 'Unknown error')}")
@@ -180,7 +182,7 @@ async def fetch_camera_image(request: Request, camera_name: str):
                             {
                                 "camera_name": "living_room",
                                 "success": True,
-                                "detection": {"detected": True, "count": 2}
+                                "detection": {"cat_detected": True, "cats_count": 2}
                             },
                             {
                                 "camera_name": "kitchen",

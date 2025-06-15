@@ -5,102 +5,13 @@ Detection results and image analysis routes.
 import logging
 from datetime import datetime
 from pathlib import Path
+import json
 
 from fastapi import APIRouter, Request, HTTPException
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/detections")
-
-
-@router.get("/database/status",
-    summary="Get Detection Database Status",
-    description="Get detection database status and statistics including recent activity and detection counts.",
-    response_description="Detection database status and statistics")
-async def get_detection_database_status(request: Request):
-    """Get detection database status and statistics."""
-    try:
-        database_service = request.app.state.database_service
-        
-        # Get all detection results from database
-        all_detection_results = await database_service.get_all_detection_results()
-        
-        # Count statistics
-        total_sources = len(all_detection_results)
-        sources_with_detections = len([r for r in all_detection_results.values() if r["detected"]])
-        total_cats_detected = sum(r["count"] for r in all_detection_results.values())
-        
-        # Get recent detection activity using async PostgreSQL methods
-        async with database_service.pool.acquire() as conn:
-            # Count total detection records
-            total_records = await conn.fetchval('SELECT COUNT(*) FROM detection_results')
-            
-            # Get most recent detections
-            recent_detections = await conn.fetch('''
-                SELECT source_name, timestamp, count, confidence 
-                FROM detection_results 
-                WHERE detected = true 
-                ORDER BY created_at DESC 
-                LIMIT 10
-            ''')
-        
-        return {
-            "database_url": database_service.database_url,
-            "database_connected": database_service.pool is not None,
-            "statistics": {
-                "total_sources_tracked": total_sources,
-                "sources_with_detections": sources_with_detections,
-                "total_cats_detected": total_cats_detected,
-                "total_detection_records": total_records
-            },
-            "current_detection_status": {
-                source: {
-                    "detected": data["detected"],
-                    "count": data["count"],
-                    "confidence": round(data["confidence"], 3),
-                    "last_detection": data["timestamp"],
-                    "activities": data.get("activities", [])
-                }
-                for source, data in all_detection_results.items()
-            },
-            "recent_activity": [
-                {
-                    "source": row['source_name'],
-                    "timestamp": row['timestamp'],
-                    "cats_detected": row['count'],
-                    "confidence": round(row['confidence'], 3)
-                }
-                for row in recent_detections
-            ],
-            "data_persistence": {
-                "database_records": total_records,
-                "persistent": True
-            }
-        }
-        
-    except Exception as e:
-        logger.error(f"Error getting detection database status: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to get detection database status: {str(e)}")
-
-
-@router.post("/database/cleanup",
-    summary="Clean Up Detection Database",
-    description="Clean up old detection results from database, keeping only recent records.",
-    response_description="Database cleanup results")
-async def cleanup_detection_database(request: Request, keep_days: int = 7):
-    """Clean up old detection results from database."""
-    try:
-        database_service = request.app.state.database_service
-        deleted_count = await database_service.cleanup_old_detection_results(keep_days)
-        return {
-            "message": "Database cleanup completed",
-            "deleted_records": deleted_count,
-            "kept_days": keep_days,
-            "cleanup_timestamp": datetime.now().isoformat()
-        }
-    except Exception as e:
-        logger.error(f"Error cleaning up detection database: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to cleanup database: {str(e)}")
 
 
 @router.get("/images",
@@ -117,177 +28,81 @@ async def get_detection_images(request: Request, page: int = 1, limit: int = 20)
             raise HTTPException(status_code=400, detail="Limit must be between 1 and 100")
         config_service = request.app.state.config_service
         database_service = request.app.state.database_service
-        
         config = config_service.config
         if not config:
             raise HTTPException(status_code=404, detail="No configuration loaded")
-        
         detection_imgs_path = Path(config.global_.ml_model_config.detection_image_path)
         if not detection_imgs_path.exists():
             return {"images": [], "total": 0}
-        
-        images = []
         feedback_database = await database_service.get_all_feedback()
-        
-        # Get all image files in the detection directory
-        for image_file in detection_imgs_path.glob("*.jpg"):
-            try:
-                # Parse filename to extract metadata
-                # Expected format: {source}_{timestamp}_activity_detections.jpg
-                filename_parts = image_file.stem.split('_')
-                
-                if len(filename_parts) >= 3:
-                    source = filename_parts[0]
-                    timestamp_str = '_'.join(filename_parts[1:3])  # date_time
-                    
-                    # Try to parse timestamp
-                    try:
-                        timestamp = datetime.strptime(timestamp_str, "%Y%m%d_%H%M%S")
-                    except ValueError:
-                        timestamp = datetime.fromtimestamp(image_file.stat().st_mtime)
-                else:
-                    source = "unknown"
-                    timestamp = datetime.fromtimestamp(image_file.stat().st_mtime)
-                
-                # Get file stats
-                file_stats = image_file.stat()
-                
-                # Initialize default values
-                cat_count = 0
-                max_confidence = 0.0
-                detections = []
-                activities_by_cat = {}
-                annotation_summary = []
-                inference_method = "no_data"
-                has_detailed_annotations = False
-                
-                # Check for feedback data first (highest priority)
-                image_feedback = None
-                for feedback_id, feedback_data in feedback_database.items():
-                    if feedback_data["image_filename"] == image_file.name:
-                        image_feedback = feedback_data
-                        break
-                
-                if image_feedback:
-                    # Use feedback data
-                    original_detections = image_feedback.get("original_detections", [])
-                    user_annotations = image_feedback.get("user_annotations", [])
-                    
-                    # Get detection info from feedback
-                    cat_detections = [d for d in original_detections if d["class_name"] in ["cat"]]
-                    cat_count = len(cat_detections)
-                    
-                    if original_detections:
-                        max_confidence = max(d["confidence"] for d in original_detections)
-                    
-                    detections = original_detections
-                    
-                    # Organize activities from user annotations
-                    for i, ann in enumerate(user_annotations):
-                        if ann.get("correct_activity"):
-                            cat_key = str(i)
-                            if cat_key not in activities_by_cat:
-                                activities_by_cat[cat_key] = []
-                            activities_by_cat[cat_key].append({
-                                "activity": ann["correct_activity"],
-                                "confidence": ann.get("activity_confidence", 0.8),
-                                "reasoning": ann.get("activity_feedback", "User feedback"),
-                                "cat_index": i
-                            })
-                    
-                    # Create annotation summary
-                    for i, detection in enumerate(original_detections):
-                        summary = f"Cat {i+1}: {detection['confidence']:.2f} confidence"
-                        annotation_summary.append(summary)
-                    
-                    for i, ann in enumerate(user_annotations):
-                        summary_parts = []
-                        if ann.get("cat_name"):
-                            summary_parts.append(f"Named: {ann['cat_name']}")
-                        if ann.get("correct_activity"):
-                            summary_parts.append(f"Activity: {ann['correct_activity']}")
-                        if ann.get("activity_feedback"):
-                            summary_parts.append(f"Notes: {ann['activity_feedback'][:30]}...")
-                        
-                        if summary_parts:
-                            annotation_summary.append(f"User annotation {i+1}: {', '.join(summary_parts)}")
-                    
-                    inference_method = "user_feedback"
-                    has_detailed_annotations = True
-                
-                else:
-                    # Get database data for this specific image
-                    db_detection_data = await database_service.get_detection_result_by_image(image_file.name)
-                    
-                    if db_detection_data and db_detection_data.get("detected"):
-                        # Use database data as-is for this specific image
-                        cat_count = db_detection_data.get("count", 0)
-                        max_confidence = db_detection_data.get("confidence", 0.0)
-                        detections = db_detection_data.get("detections", [])
-                        
-                        # Convert database activities to activities_by_cat structure
-                        db_activities = db_detection_data.get("activities", [])
-                        for act in db_activities:
-                            cat_idx = act.get("cat_index")
-                            if cat_idx is not None:
-                                cat_key = str(cat_idx)
-                                if cat_key not in activities_by_cat:
-                                    activities_by_cat[cat_key] = []
-                                activities_by_cat[cat_key].append({
-                                    "activity": act.get("activity", "unknown"),
-                                    "confidence": act.get("confidence", 0.0),
-                                    "reasoning": act.get("reasoning", ""),
-                                    "cat_index": cat_idx
-                                })
-                        
-                        inference_method = "database_data"
-                        has_detailed_annotations = False
-                    else:
-                        # No database data or no detections found - skip this image
-                        logger.debug(f"Skipping image {image_file.name} - no detection data available")
-                        continue
-                
-                # Create image info - return database data as-is
-                image_info = {
-                    "filename": image_file.name,
-                    "source": source,
-                    "timestamp": timestamp.isoformat(),
-                    "timestamp_display": timestamp.strftime("%Y-%m-%d %H:%M:%S"),
-                    "file_size": file_stats.st_size,
-                    "file_size_mb": round(file_stats.st_size / (1024*1024), 2),
-                    "cat_count": cat_count,
-                    "max_confidence": round(max_confidence, 3) if max_confidence > 0 else None,
+        # Query the database for detection results (paginated)
+        async with database_service.pool.acquire() as conn:
+            total_images = await conn.fetchval('SELECT COUNT(*) FROM detection_results')
+            total_pages = (total_images + limit - 1) // limit if total_images > 0 else 1
+            offset = (page - 1) * limit
+            rows = await conn.fetch('''
+                SELECT * FROM detection_results
+                ORDER BY created_at DESC
+                OFFSET $1 LIMIT $2
+            ''', offset, limit)
+        images = []
+        for row in rows:
+            image_filename = row['image_filename']
+            image_file = detection_imgs_path / image_filename if image_filename else None
+            if not image_file or not image_file.exists():
+                continue  # Skip if image file is missing
+            # Get file stats
+            file_stats = image_file.stat()
+            # Feedback data
+            image_feedback = None
+            for feedback_id, feedback_data in feedback_database.items():
+                if feedback_data["image_filename"] == image_filename:
+                    image_feedback = feedback_data
+                    break
+            # Compose image info
+            cat_count = row['cats_count']
+            max_confidence = row['confidence']
+            detections = row['detections'] if isinstance(row['detections'], list) else (json.loads(row['detections']) if row['detections'] else [])
+            annotation_summary = []
+            if image_feedback:
+                original_detections = image_feedback.get("original_detections", [])
+                user_annotations = image_feedback.get("user_annotations", [])
+                for i, detection in enumerate(original_detections):
+                    summary = f"Cat {i+1}: {detection['confidence']:.2f} confidence"
+                    annotation_summary.append(summary)
+                for i, ann in enumerate(user_annotations):
+                    summary_parts = []
+                    if ann.get("cat_name"):
+                        summary_parts.append(f"Named: {ann['cat_name']}")
+                    if ann.get("correct_activity"):
+                        summary_parts.append(f"Activity: {ann['correct_activity']}")
+                    if ann.get("activity_feedback"):
+                        summary_parts.append(f"Notes: {ann['activity_feedback'][:30]}...")
+                    if summary_parts:
+                        annotation_summary.append(f"User annotation {i+1}: {', '.join(summary_parts)}")
+            image_info = {
+                "filename": image_filename,
+                "source": row['source_name'],
+                "timestamp": row['timestamp'],
+                "timestamp_display": row['timestamp'],
+                "file_size": file_stats.st_size,
+                "file_size_mb": round(file_stats.st_size / (1024*1024), 2),
+                "cat_count": cat_count,
+                "max_confidence": round(max_confidence, 3) if max_confidence is not None else None,
+                "has_feedback": image_feedback is not None,
+                "has_detailed_annotations": image_feedback is not None,
+                "inference_method": "user_feedback" if image_feedback else "database_data",
+                "detections": detections[:3],  # Limit to first 3 detections for performance
+                "annotation_summary": annotation_summary[:5],  # Limit to 5 summary items
+                "detection_info": {
+                    "max_confidence": round(max_confidence, 3) if max_confidence is not None else None,
                     "has_feedback": image_feedback is not None,
-                    "has_detailed_annotations": has_detailed_annotations,
-                    "inference_method": inference_method,
-                    "detections": detections[:3],  # Limit to first 3 detections for performance
-                    "annotation_summary": annotation_summary[:5],  # Limit to 5 summary items
-                    "detection_info": {
-                        "cat_count": cat_count,
-                        "max_confidence": round(max_confidence, 3) if max_confidence > 0 else None,
-                        "has_feedback": image_feedback is not None,
-                        "detections": detections[:3]
-                    }
+                    "detections": detections[:3]
                 }
-                
-                images.append(image_info)
-                
-            except Exception as e:
-                logger.warning(f"Error processing image {image_file.name}: {e}")
-                continue
-        
-        # Sort by timestamp (newest first)
-        images.sort(key=lambda x: x["timestamp"], reverse=True)
-        
-        # Apply pagination
-        total_images = len(images)
-        total_pages = (total_images + limit - 1) // limit if total_images > 0 else 1
-        start = (page - 1) * limit
-        end = start + limit
-        paginated_images = images[start:end]
-        
+            }
+            images.append(image_info)
         return {
-            "images": paginated_images,
+            "images": images,
             "total": total_images,
             "page": page,
             "limit": limit,
@@ -296,7 +111,6 @@ async def get_detection_images(request: Request, page: int = 1, limit: int = 20)
             "has_prev": page > 1,
             "detection_imgs_path": str(detection_imgs_path),
         }
-        
     except Exception as e:
         logger.error(f"Error getting detection images: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to get detection images: {str(e)}")

@@ -11,7 +11,7 @@ from datetime import datetime, timedelta
 import numpy as np
 import subprocess
 
-from models import CatDetectionWithActivity
+from models import ImageDetections
 
 logger = logging.getLogger(__name__)
 
@@ -254,7 +254,7 @@ class DatabaseService:
             return count
     
     # Detection results operations
-    async def save_detection_result(self, source_name: str, detection_result: CatDetectionWithActivity, image_array: np.ndarray = None, image_filename: str = None):
+    async def save_detection_result(self, source_name: str, detection_result: ImageDetections, image_array: np.ndarray = None, image_filename: str = None):
         """Save detection result to database. Never overwrites existing detections for the same image."""
         async with self.pool.acquire() as conn:
             # Create hash of image array for similarity comparison (optional)
@@ -272,36 +272,19 @@ class DatabaseService:
                 } for d in detection_result.detections
             ])
             
-            # Convert activities to JSON
-            activities_json = json.dumps([
-                {
-                    "activity": a.activity.value,
-                    "confidence": a.confidence,
-                    "reasoning": a.reasoning,
-                    "bounding_box": a.bounding_box,
-                    "duration_seconds": a.duration_seconds,
-                    "cat_index": a.cat_index,
-                    "detection_id": a.detection_id
-                } for a in detection_result.activities
-            ]) if detection_result.activities else None
-            
             # Use INSERT ... ON CONFLICT DO NOTHING to never overwrite existing detections
             result = await conn.execute('''
                 INSERT INTO detection_results 
-                (source_name, image_filename, detected, count, confidence, detections, activities, 
-                 total_animals, primary_activity, image_array_hash, timestamp)
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+                (source_name, image_filename, cat_detected, cats_count, confidence, detections, image_array_hash, timestamp)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
                 ON CONFLICT (source_name, image_filename) DO NOTHING
             ''', 
                 source_name,
                 image_filename,
-                detection_result.detected,
-                detection_result.count,
+                detection_result.cat_detected,
+                detection_result.cats_count,
                 detection_result.confidence,
                 detections_json,
-                activities_json,
-                detection_result.total_animals,
-                detection_result.primary_activity.value if detection_result.primary_activity else None,
                 image_hash,
                 datetime.now().isoformat()
             )
@@ -326,12 +309,9 @@ class DatabaseService:
             if row:
                 return {
                     "detected": bool(row['detected']),
-                    "count": row['count'],
+                    "cats_count": row['cats_count'],
                     "confidence": row['confidence'],
                     "detections": json.loads(row['detections']) if row['detections'] else [],
-                    "activities": json.loads(row['activities']) if row['activities'] else [],
-                    "total_animals": row['total_animals'],
-                    "primary_activity": row['primary_activity'],
                     "timestamp": row['timestamp']
                 }
             return None
@@ -360,13 +340,10 @@ class DatabaseService:
                 
                 if row:
                     results[source_name] = {
-                        "detected": bool(row['detected']),
-                        "count": row['count'],
+                        "cat_detected": bool(row['cat_detected']),
+                        "cats_count": row['cats_count'],
                         "confidence": row['confidence'],
                         "detections": json.loads(row['detections']) if row['detections'] else [],
-                        "activities": json.loads(row['activities']) if row['activities'] else [],
-                        "total_animals": row['total_animals'],
-                        "primary_activity": row['primary_activity'],
                         "timestamp": row['timestamp']
                     }
             
@@ -412,13 +389,10 @@ class DatabaseService:
                 
                 for row in rows:
                     source_results.append({
-                        "detected": bool(row['detected']),
-                        "count": row['count'],
+                        "cat_detected": bool(row['cat_detected']),
+                        "cats_count": row['cats_count'],
                         "confidence": row['confidence'],
                         "detections": json.loads(row['detections']) if row['detections'] else [],
-                        "activities": json.loads(row['activities']) if row['activities'] else [],
-                        "total_animals": row['total_animals'],
-                        "primary_activity": row['primary_activity'],
                         "timestamp": row['timestamp'],
                         "created_at": row['created_at']
                     })
@@ -439,13 +413,10 @@ class DatabaseService:
             
             if row:
                 return {
-                    "detected": bool(row['detected']),
-                    "count": row['count'],
+                    "cat_detected": bool(row['cat_detected']),
+                    "cats_count": row['cats_count'],
                     "confidence": row['confidence'],
                     "detections": json.loads(row['detections']) if row['detections'] else [],
-                    "activities": json.loads(row['activities']) if row['activities'] else [],
-                    "total_animals": row['total_animals'],
-                    "primary_activity": row['primary_activity'],
                     "timestamp": row['timestamp'],
                     "source_name": row['source_name'],
                     "image_filename": row['image_filename']

@@ -70,22 +70,9 @@ components:
       - grooming
       title: CatActivity
       type: string
-    CatProfile:
-      description: 'Profile for a named cat with their characteristics.
-
-
-        Contains identification information, physical characteristics,
-
-        behavioral patterns, and detection statistics for individual cats.'
+    CreateCatProfileRequest:
+      description: Request model for creating a new cat profile.
       properties:
-        average_confidence:
-          default: 0.0
-          description: Average detection confidence score for this cat
-          example: 0.87
-          maximum: 1.0
-          minimum: 0.0
-          title: Average Confidence
-          type: number
         breed:
           anyOf:
           - maxLength: 50
@@ -102,12 +89,6 @@ components:
           description: Primary color or color pattern of the cat
           example: Orange tabby with white chest
           title: Color
-        created_timestamp:
-          description: When this cat profile was first created
-          example: '2023-12-01T14:30:22.123456'
-          format: date-time
-          title: Created Timestamp
-          type: string
         description:
           anyOf:
           - maxLength: 500
@@ -117,19 +98,12 @@ components:
           example: A friendly orange tabby who loves to play with string toys
           title: Description
         favorite_activities:
-          description: List of activities this cat is commonly observed doing
+          description: List of activities this cat is commonly observed doing (as
+            strings)
           items:
-            $ref: '#/components/schemas/CatActivity'
+            type: string
           title: Favorite Activities
           type: array
-        last_seen_timestamp:
-          anyOf:
-          - format: date-time
-            type: string
-          - type: 'null'
-          description: When this cat was last detected in any camera
-          example: '2023-12-01T16:45:30.789012'
-          title: Last Seen Timestamp
         name:
           description: Unique name identifier for the cat
           example: Whiskers
@@ -137,26 +111,9 @@ components:
           minLength: 1
           title: Name
           type: string
-        preferred_locations:
-          description: Camera/image sources where this cat is commonly seen
-          example:
-          - living_room_camera
-          - kitchen_camera
-          items:
-            type: string
-          title: Preferred Locations
-          type: array
-        total_detections:
-          default: 0
-          description: Total number of times this cat has been detected
-          example: 127
-          minimum: 0.0
-          title: Total Detections
-          type: integer
       required:
       - name
-      - created_timestamp
-      title: CatProfile
+      title: CreateCatProfileRequest
       type: object
     Detection:
       description: 'Represents a single object detection result from ML model.
@@ -179,6 +136,13 @@ components:
             y2: 400.1
           title: Bounding Box
           type: object
+        cat_uuid:
+          anyOf:
+          - type: string
+          - type: 'null'
+          description: Unique identifier for this cat detection
+          example: 550e8400-e29b-41d4-a716-446655440000
+          title: Cat Uuid
         class_id:
           description: YOLO class ID for the detected object
           example: 15
@@ -232,14 +196,13 @@ components:
         bounding_box:
           $ref: '#/components/schemas/BoundingBox'
           description: Corrected or confirmed bounding box coordinates
-        cat_name:
+        cat_profile_uuid:
           anyOf:
-          - maxLength: 50
-            type: string
+          - type: string
           - type: 'null'
-          description: Optional name for the identified cat
-          example: Whiskers
-          title: Cat Name
+          description: UUID of the selected cat profile, if provided by the user
+          example: 550e8400-e29b-41d4-a716-446655440000
+          title: Cat Profile Uuid
         class_id:
           description: YOLO class ID for the annotated object
           example: 15
@@ -375,6 +338,65 @@ components:
           example: Retrained with 500 new annotations focusing on sleeping cats
           title: Description
       title: ModelRetrainRequest
+      type: object
+    UpdateCatProfileRequest:
+      properties:
+        average_confidence:
+          anyOf:
+          - type: number
+          - type: 'null'
+          title: Average Confidence
+        bounding_box_color:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Bounding Box Color
+        breed:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Breed
+        color:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Color
+        description:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Description
+        favorite_activities:
+          anyOf:
+          - items:
+              type: string
+            type: array
+          - type: 'null'
+          title: Favorite Activities
+        last_seen_timestamp:
+          anyOf:
+          - format: date-time
+            type: string
+          - type: 'null'
+          title: Last Seen Timestamp
+        name:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Name
+        preferred_locations:
+          anyOf:
+          - items:
+              type: string
+            type: array
+          - type: 'null'
+          title: Preferred Locations
+        total_detections:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Total Detections
+      title: UpdateCatProfileRequest
       type: object
     ValidationError:
       properties:
@@ -714,7 +736,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/CatProfile'
+              $ref: '#/components/schemas/CreateCatProfileRequest'
         required: true
       responses:
         '200':
@@ -731,92 +753,10 @@ paths:
       summary: Create Cat Profile
       tags:
       - cats
-  /cats/{cat_name}:
-    delete:
-      description: Delete a cat profile.
-      operationId: delete_cat_profile_cats__cat_name__delete
-      parameters:
-      - in: path
-        name: cat_name
-        required: true
-        schema:
-          title: Cat Name
-          type: string
-      responses:
-        '200':
-          content:
-            application/json:
-              schema: {}
-          description: Successful Response
-        '422':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
-          description: Validation Error
-      summary: Delete Cat Profile
-      tags:
-      - cats
-    get:
-      description: Get detailed information about a specific cat.
-      operationId: get_cat_profile_cats__cat_name__get
-      parameters:
-      - in: path
-        name: cat_name
-        required: true
-        schema:
-          title: Cat Name
-          type: string
-      responses:
-        '200':
-          content:
-            application/json:
-              schema: {}
-          description: Successful Response
-        '422':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
-          description: Validation Error
-      summary: Get Cat Profile
-      tags:
-      - cats
-    put:
-      description: Update an existing cat profile.
-      operationId: update_cat_profile_cats__cat_name__put
-      parameters:
-      - in: path
-        name: cat_name
-        required: true
-        schema:
-          title: Cat Name
-          type: string
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/CatProfile'
-        required: true
-      responses:
-        '200':
-          content:
-            application/json:
-              schema: {}
-          description: Successful Response
-        '422':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
-          description: Validation Error
-      summary: Update Cat Profile
-      tags:
-      - cats
-  /cats/{cat_name}/activity-history:
+  /cats/by-name/{cat_name}/activity-history:
     get:
       description: Get activity history for a specific named cat.
-      operationId: get_cat_activity_history_cats__cat_name__activity_history_get
+      operationId: get_cat_activity_history_cats_by_name__cat_name__activity_history_get
       parameters:
       - in: path
         name: cat_name
@@ -837,6 +777,88 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
           description: Validation Error
       summary: Get Cat Activity History
+      tags:
+      - cats
+  /cats/{cat_uuid}:
+    delete:
+      description: Delete a cat profile.
+      operationId: delete_cat_profile_cats__cat_uuid__delete
+      parameters:
+      - in: path
+        name: cat_uuid
+        required: true
+        schema:
+          title: Cat Uuid
+          type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: {}
+          description: Successful Response
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      summary: Delete Cat Profile
+      tags:
+      - cats
+    get:
+      description: Get detailed information about a specific cat.
+      operationId: get_cat_profile_cats__cat_uuid__get
+      parameters:
+      - in: path
+        name: cat_uuid
+        required: true
+        schema:
+          title: Cat Uuid
+          type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: {}
+          description: Successful Response
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      summary: Get Cat Profile
+      tags:
+      - cats
+    put:
+      description: Update an existing cat profile.
+      operationId: update_cat_profile_cats__cat_uuid__put
+      parameters:
+      - in: path
+        name: cat_uuid
+        required: true
+        schema:
+          title: Cat Uuid
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateCatProfileRequest'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: {}
+          description: Successful Response
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      summary: Update Cat Profile
       tags:
       - cats
   /detections/classes:
@@ -898,12 +920,33 @@ paths:
     get:
       description: Get list of detection images with metadata and annotation information.
       operationId: get_detection_images_detections_images_get
+      parameters:
+      - in: query
+        name: page
+        required: false
+        schema:
+          default: 1
+          title: Page
+          type: integer
+      - in: query
+        name: limit
+        required: false
+        schema:
+          default: 20
+          title: Limit
+          type: integer
       responses:
         '200':
           content:
             application/json:
               schema: {}
           description: List of detection images with metadata
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
       summary: List Detection Images
       tags:
       - detections

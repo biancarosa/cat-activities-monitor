@@ -9,7 +9,7 @@ from datetime import datetime
 
 import httpx
 
-from models import ImageConfig, CatDetectionWithActivity
+from models import ImageConfig, ImageDetections
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +21,7 @@ class ImageService:
         self.detection_service = detection_service
         self.database_service = database_service
     
-    async def fetch_image_from_url(self, image_config: ImageConfig, yolo_config, timeout: int = 30) -> Tuple[bool, Optional[CatDetectionWithActivity]]:
+    async def fetch_image_from_url(self, image_config: ImageConfig, yolo_config, timeout: int = 30) -> Tuple[bool, Optional[ImageDetections]]:
         """
         Fetch an image from the given URL, detect objects, and log results.
         Returns (success, detection_result).
@@ -73,41 +73,20 @@ class ImageService:
                             image_config.name
                         )
                         
-                        if detection_result.detected:
+                        if detection_result.cat_detected:
                             from services.detection_service import COCO_CLASSES
                             target_classes = [COCO_CLASSES.get(cls, f"class_{cls}") for cls in yolo_config.target_classes]
                             logger.info(f"🎯 TARGET OBJECTS DETECTED in '{image_config.name}'! "
-                                      f"Count: {detection_result.count}, "
+                                      f"Count: {detection_result.cats_count}, "
                                       f"Max confidence: {detection_result.confidence:.2f}, "
                                       f"Classes: {target_classes}")
                             
                             # Log individual detections
                             for detection in detection_result.detections:
                                 logger.info(f"  - {detection.class_name}: {detection.confidence:.2f}")
-                            
-                            # Log detected activities organized by cat
-                            if detection_result.activities:
-                                logger.info(f"🐱 ACTIVITIES DETECTED in '{image_config.name}':")
-                                
-                                # Group activities by cat for cleaner logging
-                                if detection_result.cat_activities:
-                                    for cat_index, cat_activities in detection_result.cat_activities.items():
-                                        logger.info(f"  Cat {int(cat_index) + 1}:")
-                                        for activity in cat_activities:
-                                            logger.info(f"    - {activity.activity.value}: {activity.confidence:.2f} ({activity.reasoning})")
-                                else:
-                                    # Fallback to flat list if cat_activities not available
-                                    for activity in detection_result.activities:
-                                        cat_label = f"Cat {activity.cat_index + 1}" if activity.cat_index is not None else "Unknown Cat"
-                                        logger.info(f"  {cat_label} - {activity.activity.value}: {activity.confidence:.2f} ({activity.reasoning})")
-                                
-                                if detection_result.primary_activity:
-                                    logger.info(f"  🎯 Primary activity: {detection_result.primary_activity.value}")
-                            else:
-                                logger.info("  No specific activities detected")
                         else:
                             logger.info(f"No target objects detected in '{image_config.name}' "
-                                      f"(Total animals: {detection_result.total_animals})")
+                                      f"(Total cats: {detection_result.cats_count})")
                         
                         # Save detection result to database for persistence
                         try:
