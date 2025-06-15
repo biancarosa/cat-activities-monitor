@@ -206,7 +206,7 @@ export default function FeedbackModal({
         <DialogHeader>
           <DialogTitle className="flex items-center space-x-2">
             <Tag className="h-5 w-5" />
-            <span>Label Cats - {image.filename}</span>
+            <span>Feedback</span>
           </DialogTitle>
           <DialogDescription>
             🧠 <strong>Help train the AI!</strong> Give individual feedback for each cat detection - confirm correct ones, 
@@ -330,6 +330,7 @@ export default function FeedbackModal({
                       <h4 className="font-medium" style={{ color: catColor }}>
                         Cat {index + 1}
                       </h4>
+                      <span className="ml-2 text-xs text-muted-foreground">({detection.class_name})</span>
                     </div>
                     <Badge variant="outline" className="text-xs">
                       {(detection.confidence * 100).toFixed(0)}% confidence
