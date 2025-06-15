@@ -83,7 +83,7 @@ export interface DetectionImagesResponse {
   total_pages: number;
   has_next: boolean;
   has_prev: boolean;
-  detection_path: string;
+  detection_imgs_path: string;
 }
 
 export interface BoundingBox {

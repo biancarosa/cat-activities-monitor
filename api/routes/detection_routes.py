@@ -122,15 +122,15 @@ async def get_detection_images(request: Request, page: int = 1, limit: int = 20)
         if not config:
             raise HTTPException(status_code=404, detail="No configuration loaded")
         
-        detection_path = Path(config.global_.ml_model_config.detection_image_path)
-        if not detection_path.exists():
+        detection_imgs_path = Path(config.global_.ml_model_config.detection_image_path)
+        if not detection_imgs_path.exists():
             return {"images": [], "total": 0}
         
         images = []
         feedback_database = await database_service.get_all_feedback()
         
         # Get all image files in the detection directory
-        for image_file in detection_path.glob("*.jpg"):
+        for image_file in detection_imgs_path.glob("*.jpg"):
             try:
                 # Parse filename to extract metadata
                 # Expected format: {source}_{timestamp}_activity_detections.jpg
@@ -296,7 +296,7 @@ async def get_detection_images(request: Request, page: int = 1, limit: int = 20)
             "total_pages": total_pages,
             "has_next": page < total_pages,
             "has_prev": page > 1,
-            "detection_path": str(detection_path),
+            "detection_imgs_path": str(detection_imgs_path),
         }
         
     except Exception as e:
@@ -318,8 +318,8 @@ async def get_image_annotations(request: Request, image_filename: str):
         if not config:
             raise HTTPException(status_code=404, detail="No configuration loaded")
         
-        detection_path = Path(config.global_.ml_model_config.detection_image_path)
-        image_file = detection_path / image_filename
+        detection_imgs_path = Path(config.global_.ml_model_config.detection_image_path)
+        image_file = detection_imgs_path / image_filename
         
         if not image_file.exists():
             raise HTTPException(status_code=404, detail=f"Image '{image_filename}' not found")
@@ -424,8 +424,8 @@ async def reprocess_detection_image(request: Request, image_filename: str):
         if not config:
             raise HTTPException(status_code=404, detail="No configuration loaded")
         
-        detection_path = Path(config.global_.ml_model_config.detection_image_path)
-        image_file = detection_path / image_filename
+        detection_imgs_path = Path(config.global_.ml_model_config.detection_image_path)
+        image_file = detection_imgs_path / image_filename
         
         if not image_file.exists():
             raise HTTPException(status_code=404, detail=f"Image '{image_filename}' not found")
@@ -542,12 +542,12 @@ async def reprocess_all_detection_images(request: Request):
         if not config:
             raise HTTPException(status_code=404, detail="No configuration loaded")
         
-        detection_path = Path(config.global_.ml_model_config.detection_image_path)
-        if not detection_path.exists():
+        detection_imgs_path = Path(config.global_.ml_model_config.detection_image_path)
+        if not detection_imgs_path.exists():
             return {"message": "No detection images directory found", "processed": 0, "errors": 0}
         
         # Get all image files
-        image_files = list(detection_path.glob("*.jpg"))
+        image_files = list(detection_imgs_path.glob("*.jpg"))
         
         if not image_files:
             return {"message": "No detection images found", "processed": 0, "errors": 0}
