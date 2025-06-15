@@ -84,7 +84,6 @@ export interface DetectionImagesResponse {
   has_next: boolean;
   has_prev: boolean;
   detection_path: string;
-  has_feedback_data: boolean;
 }
 
 export interface BoundingBox {

@@ -297,7 +297,6 @@ async def get_detection_images(request: Request, page: int = 1, limit: int = 20)
             "has_next": page < total_pages,
             "has_prev": page > 1,
             "detection_path": str(detection_path),
-            "has_feedback_data": len(feedback_database) > 0
         }
         
     except Exception as e:

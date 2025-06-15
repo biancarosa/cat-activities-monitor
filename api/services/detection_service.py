@@ -328,11 +328,11 @@ class DetectionService:
         for activity in activities:
             self.activity_history[image_name].append(activity)
         
-        # Start with current activities as base - this ensures we only work with cats that exist in this image
-        activities = []
-        
         # Get the cat indices that actually exist in the current image
         current_cat_indices = set(activity.cat_index for activity in activities if activity.cat_index is not None)
+        
+        # Start with current activities as base - this ensures we only work with cats that exist in this image
+        image_activities = []
         
         if len(self.activity_history[image_name]) >= 3 and current_cat_indices:
             # Look for consistent activities, but only for cats that exist in the current image
@@ -377,15 +377,18 @@ class DetectionService:
                             duration_seconds=best_count * 30,  # Estimate duration (assuming 30s intervals)
                             cat_index=current_cat_index
                         )
-                        activities.append(activity)
+                        image_activities.append(activity)
                         cat_indices.add(current_cat_index)
             
             # Add current activities for cats that weren't enhanced (to ensure all cats have activities)
             for activity in activities:
                 if activity.cat_index not in cat_indices:
-                    activities.append(activity)
+                    image_activities.append(activity)
+            
+            return image_activities
         
-        return activities if activities else activities
+        # If no temporal enhancement was possible, return original activities
+        return activities
     
     def calculate_image_similarity(self, img1_array: np.ndarray, img2_array: np.ndarray) -> float:
         """Calculate similarity between two images using structural similarity."""
