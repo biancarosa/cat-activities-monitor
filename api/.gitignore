@@ -12,3 +12,5 @@ ml_models/
 
 # Configuration files with sensitive data
 config.yaml
+.venv/
+api/.venv/
