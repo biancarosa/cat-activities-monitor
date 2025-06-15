@@ -19,6 +19,8 @@ dependencies = [
     "scikit-image>=0.21.0",
     "jinja2>=3.1.0",
     "asyncpg>=0.29.0",
+    "alembic>=1.16.1",
+    "psycopg2-binary>=2.9.0",
 ]
 requires-python = ">=3.11"
 license = {text = "MIT"}
@@ -32,6 +34,8 @@ include = [
     "main.py",
     "config.yaml",
     "*.md",
+    "alembic.ini",
+    "migrations/**",
 ]
 
 [tool.uv]
