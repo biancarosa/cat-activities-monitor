@@ -78,6 +78,11 @@ class CatProfile(BaseModel):
         description="Camera/image sources where this cat is commonly seen",
         example=["living_room_camera", "kitchen_camera"]
     )
+    bounding_box_color: str = Field(
+        ...,
+        description="Color of the bounding box for this cat",
+        example="#FFA500"
+    )
 
 
 class CreateCatProfileRequest(BaseModel):

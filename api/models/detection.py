@@ -1,5 +1,5 @@
 """
-Detection models.
+Detection and activity models.
 """
 
 from typing import Dict, List, Optional
@@ -68,46 +68,107 @@ class CatActivity(str, Enum):
     GROOMING = "grooming"
 
 
+class ActivityDetection(BaseModel):
+    """
+    Model for activity detection results.
+    
+    Represents a detected activity with confidence, reasoning, and temporal information.
+    """
+    activity: CatActivity = Field(
+        ..., 
+        description="The detected cat activity"
+    )
+    confidence: float = Field(
+        ..., 
+        description="Confidence score for the activity detection",
+        example=0.92,
+        ge=0.0,
+        le=1.0
+    )
+    reasoning: str = Field(
+        ..., 
+        description="Explanation of why this activity was detected",
+        example="Cat is in a crouched position with head lowered towards ground, typical eating posture"
+    )
+    bounding_box: Dict[str, float] = Field(
+        ..., 
+        description="Bounding box coordinates for the activity region",
+        example={
+            "x1": 100.5,
+            "y1": 150.2,
+            "x2": 300.8,
+            "y2": 400.1,
+            "width": 200.3,
+            "height": 249.9
+        }
+    )
+    duration_seconds: Optional[float] = Field(
+        None, 
+        description="How long this activity has been detected in seconds",
+        example=15.5,
+        ge=0.0
+    )
+    cat_index: Optional[int] = Field(
+        None, 
+        description="Which cat this activity belongs to (0-based index)",
+        example=0,
+        ge=0
+    )
+    detection_id: Optional[str] = Field(
+        None, 
+        description="Unique ID to link to specific detection",
+        example="det_20231201_143022_001"
+    )
+
+
 class CatDetectionWithActivity(BaseModel):
     """
-    Cat detection results with backwards compatibility for activities.
+    Enhanced cat detection that includes activity recognition.
     
-    This is the main response model for detection endpoints.
-    Activities field is maintained for backwards compatibility but always empty.
+    This is the main response model for detection endpoints, containing
+    both object detection results and activity analysis.
     """
-    detections: List[Detection] = Field(
+    detected: bool = Field(
         ..., 
-        description="List of individual detection results"
+        description="Whether any cats were detected in the image",
+        example=True
     )
-    cat_count: int = Field(
+    confidence: float = Field(
+        ..., 
+        description="Overall detection confidence (highest among all detections)",
+        example=0.89,
+        ge=0.0,
+        le=1.0
+    )
+    count: int = Field(
         ..., 
         description="Number of cats detected",
         example=2,
         ge=0
     )
-    max_confidence: float = Field(
+    detections: List[Detection] = Field(
         ..., 
-        description="Highest detection confidence among all detections",
-        example=0.89,
-        ge=0.0,
-        le=1.0
+        description="List of individual detection results"
     )
-    activities: Dict[str, list] = Field(
-        default_factory=dict, 
-        description="Activities by cat (empty for backwards compatibility)"
+    total_animals: int = Field(
+        ..., 
+        description="Total number of animals detected (cats + other animals)",
+        example=2,
+        ge=0
     )
-    primary_activity: Optional[str] = Field(
+    activities: List[ActivityDetection] = Field(
+        default_factory=list, 
+        description="List of detected activities for all cats"
+    )
+    primary_activity: Optional[CatActivity] = Field(
         None, 
-        description="Primary activity (None for backwards compatibility)"
+        description="Most confident activity detected across all cats"
     )
-    processing_time_ms: float = Field(
-        ..., 
-        description="Processing time in milliseconds",
-        example=125.5,
-        ge=0.0
-    )
-    image_size: Dict[str, int] = Field(
-        ..., 
-        description="Image dimensions",
-        example={"width": 1920, "height": 1080}
-    )
+    cat_activities: Optional[Dict[str, List[ActivityDetection]]] = Field(
+        None, 
+        description="Map of cat index to their detected activities",
+        example={
+            "0": [{"activity": "eating", "confidence": 0.92}],
+            "1": [{"activity": "sitting", "confidence": 0.78}]
+        }
+    ) 

@@ -26,6 +26,7 @@ from routes import (
     system_routes,
     camera_routes,
     detection_routes,
+    activity_routes,
     feedback_routes,
     training_routes,
     cat_routes
@@ -132,6 +133,8 @@ async def lifespan(app: FastAPI):
         detection_service.initialize_ml_model(config.global_.ml_model_config)
         logger.info(f"🤖 ML model loaded: {config.global_.ml_model_config.model}")
         
+        # Load activity history and previous detections from database
+        await detection_service.load_activity_history_from_database(database_service)
         
         # Store services in app state for dependency injection
         app.state.config_service = config_service
@@ -203,6 +206,10 @@ app = FastAPI(
             "description": "Detection results and analysis endpoints for retrieving detection data and images."
         },
         {
+            "name": "activities",
+            "description": "Activity analysis endpoints for tracking and summarizing cat activities across cameras."
+        },
+        {
             "name": "feedback",
             "description": "Feedback system endpoints for submitting corrections and improvements to enhance model accuracy."
         },
@@ -244,6 +251,7 @@ app.include_router(main_routes.router, tags=["main"])
 app.include_router(system_routes.router, tags=["system"])
 app.include_router(camera_routes.router, tags=["cameras"])
 app.include_router(detection_routes.router, tags=["detections"])
+app.include_router(activity_routes.router, tags=["activities"])
 app.include_router(feedback_routes.router, tags=["feedback"])
 app.include_router(training_routes.router, tags=["training"])
 app.include_router(cat_routes.router, tags=["cats"])

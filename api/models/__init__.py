@@ -8,7 +8,7 @@ from .config import (
     GlobalConfig, Config
 )
 from .detection import (
-    Detection, CatDetectionWithActivity, CatActivity
+    Detection, CatActivity, ActivityDetection, CatDetectionWithActivity
 )
 from .feedback import (
     BoundingBox, FeedbackAnnotation, ImageFeedback, TrainingDataExport,
@@ -22,7 +22,7 @@ __all__ = [
     "GlobalConfig", "Config",
     
     # Detection models  
-    "Detection", "CatDetectionWithActivity", "CatActivity",
+    "Detection", "CatActivity", "ActivityDetection", "CatDetectionWithActivity",
     
     # Feedback models
     "BoundingBox", "FeedbackAnnotation", "ImageFeedback", "TrainingDataExport",

@@ -5,6 +5,8 @@ Cat profile routes.
 import logging
 import uuid
 from datetime import datetime
+import random
+from utils import BOUNDING_BOX_COLORS
 
 from fastapi import APIRouter, Request, HTTPException
 
@@ -32,7 +34,7 @@ async def create_cat_profile(request: Request, create_request: CreateCatProfileR
             "cat_uuid": str(uuid.uuid4()),
             "name": create_request.name,
             "description": create_request.description,
-            "color": create_request.color,
+            "color": create_request.color or random.choice(BOUNDING_BOX_COLORS),
             "breed": create_request.breed,
             "favorite_activities": create_request.favorite_activities,
             "created_timestamp": datetime.now().isoformat(),
