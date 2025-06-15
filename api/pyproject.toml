@@ -1,6 +1,6 @@
 [project]
 name = "cat-activites-monitor-api"
-version = "0.1.2"
+version = "0.2.0"
 description = "A FastAPI app that fetches camera's snapshots and analyzes cats behavior."
 authors = [
     {name = "Bianca Rosa", email = "me@biancarosa.com"},
