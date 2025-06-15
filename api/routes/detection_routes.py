@@ -257,7 +257,6 @@ async def get_detection_images(request: Request, page: int = 1, limit: int = 20)
                     "file_size_mb": round(file_stats.st_size / (1024*1024), 2),
                     "cat_count": cat_count,
                     "max_confidence": round(max_confidence, 3) if max_confidence > 0 else None,
-                    "activities_by_cat": activities_by_cat,
                     "has_feedback": image_feedback is not None,
                     "has_detailed_annotations": has_detailed_annotations,
                     "inference_method": inference_method,
@@ -266,7 +265,6 @@ async def get_detection_images(request: Request, page: int = 1, limit: int = 20)
                     "detection_info": {
                         "cat_count": cat_count,
                         "max_confidence": round(max_confidence, 3) if max_confidence > 0 else None,
-                        "activities_by_cat": activities_by_cat,
                         "has_feedback": image_feedback is not None,
                         "detections": detections[:3]
                     }

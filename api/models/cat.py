@@ -117,4 +117,17 @@ class CreateCatProfileRequest(BaseModel):
     favorite_activities: List[str] = Field(
         default_factory=list, 
         description="List of activities this cat is commonly observed doing (as strings)"
-    ) 
+    )
+
+
+class UpdateCatProfileRequest(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    color: Optional[str] = None
+    breed: Optional[str] = None
+    favorite_activities: Optional[List[str]] = None
+    last_seen_timestamp: Optional[datetime] = None
+    total_detections: Optional[int] = None
+    average_confidence: Optional[float] = None
+    preferred_locations: Optional[List[str]] = None
+    bounding_box_color: Optional[str] = None 

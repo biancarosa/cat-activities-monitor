@@ -10,7 +10,7 @@ from utils import BOUNDING_BOX_COLORS
 
 from fastapi import APIRouter, Request, HTTPException
 
-from models import CatProfile, CreateCatProfileRequest
+from models import CatProfile, CreateCatProfileRequest, UpdateCatProfileRequest
 from utils import convert_datetime_fields_to_strings
 
 logger = logging.getLogger(__name__)
@@ -34,7 +34,8 @@ async def create_cat_profile(request: Request, create_request: CreateCatProfileR
             "cat_uuid": str(uuid.uuid4()),
             "name": create_request.name,
             "description": create_request.description,
-            "color": create_request.color or random.choice(BOUNDING_BOX_COLORS),
+            "color": create_request.color,
+            "bounding_box_color": random.choice(BOUNDING_BOX_COLORS),
             "breed": create_request.breed,
             "favorite_activities": create_request.favorite_activities,
             "created_timestamp": datetime.now().isoformat(),
@@ -77,76 +78,80 @@ async def list_cat_profiles(request: Request):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/{cat_name}")
-async def get_cat_profile(request: Request, cat_name: str):
+@router.get("/{cat_uuid}")
+async def get_cat_profile(request: Request, cat_uuid: str):
     """Get detailed information about a specific cat."""
     try:
         database_service = request.app.state.database_service
-        profile = await database_service.get_cat_profile_by_name(cat_name)
+        profile = await database_service.get_cat_profile_by_uuid(cat_uuid)
         
         if profile is None:
-            raise HTTPException(status_code=404, detail=f"Cat '{cat_name}' not found")
+            raise HTTPException(status_code=404, detail=f"Cat '{cat_uuid}' not found")
         
         return profile
     except Exception as e:
-        logger.error(f"Error getting cat profile for {cat_name}: {e}")
+        logger.error(f"Error getting cat profile for {cat_uuid}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.put("/{cat_name}")
-async def update_cat_profile(request: Request, cat_name: str, updated_profile: CatProfile):
+@router.put("/{cat_uuid}")
+async def update_cat_profile(request: Request, cat_uuid: str, updated_profile: UpdateCatProfileRequest):
     """Update an existing cat profile."""
     try:
         database_service = request.app.state.database_service
         
-        existing_profile = await database_service.get_cat_profile_by_name(cat_name)
+        existing_profile = await database_service.get_cat_profile_by_uuid(cat_uuid)
         if existing_profile is None:
-            raise HTTPException(status_code=404, detail=f"Cat '{cat_name}' not found")
+            raise HTTPException(status_code=404, detail=f"Cat '{cat_uuid}' not found")
         
-        # Preserve creation timestamp and detection stats
-        updated_data = updated_profile.model_dump()
-        updated_data['created_timestamp'] = existing_profile['created_timestamp']
-        updated_data['total_detections'] = existing_profile.get('total_detections', 0)
-        updated_data['average_confidence'] = existing_profile.get('average_confidence', 0.0)
+        # Merge provided fields with existing profile
+        updated_data = {**existing_profile, **{k: v for k, v in updated_profile.model_dump().items() if v is not None}}
+        # Ensure required fields are present
+        if not updated_data.get('bounding_box_color'):
+            updated_data['bounding_box_color'] = random.choice(BOUNDING_BOX_COLORS)
+        if not updated_data.get('cat_uuid'):
+            updated_data['cat_uuid'] = existing_profile['cat_uuid']
+        if not updated_data.get('created_timestamp'):
+            updated_data['created_timestamp'] = existing_profile['created_timestamp']
         
         # Convert datetime fields to strings for PostgreSQL
         updated_data = convert_datetime_fields_to_strings(updated_data)
         
-        await database_service.save_cat_profile(cat_name, updated_data)
-        logger.info(f"🐱 Updated cat profile: {cat_name}")
+        await database_service.save_cat_profile(cat_uuid, updated_data)
+        logger.info(f"🐱 Updated cat profile: {cat_uuid}")
         
         return {
             "message": "Cat profile updated successfully",
-            "cat_name": cat_name,
+            "cat_uuid": cat_uuid,
             "persisted": True
         }
     except Exception as e:
-        logger.error(f"Error updating cat profile for {cat_name}: {e}")
+        logger.error(f"Error updating cat profile for {cat_uuid}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.delete("/{cat_name}")
-async def delete_cat_profile(request: Request, cat_name: str):
+@router.delete("/{cat_uuid}")
+async def delete_cat_profile(request: Request, cat_uuid: str):
     """Delete a cat profile."""
     try:
         database_service = request.app.state.database_service
         
-        existing_profile = await database_service.get_cat_profile_by_name(cat_name)
+        existing_profile = await database_service.get_cat_profile_by_uuid(cat_uuid)
         if existing_profile is None:
-            raise HTTPException(status_code=404, detail=f"Cat '{cat_name}' not found")
+            raise HTTPException(status_code=404, detail=f"Cat '{cat_uuid}' not found")
         
-        deleted = await database_service.delete_cat_profile(cat_name)
+        deleted = await database_service.delete_cat_profile(cat_uuid)
         if not deleted:
             raise HTTPException(status_code=500, detail="Failed to delete cat profile")
         
-        logger.info(f"🗑️ Deleted cat profile: {cat_name}")
+        logger.info(f"🗑️ Deleted cat profile: {cat_uuid}")
         
         return {
             "message": "Cat profile deleted successfully",
-            "deleted_cat": cat_name
+            "deleted_cat": cat_uuid
         }
     except Exception as e:
-        logger.error(f"Error deleting cat profile for {cat_name}: {e}")
+        logger.error(f"Error deleting cat profile for {cat_uuid}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 

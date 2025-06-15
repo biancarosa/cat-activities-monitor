@@ -14,7 +14,7 @@ from .feedback import (
     BoundingBox, FeedbackAnnotation, ImageFeedback, TrainingDataExport,
     ModelSaveRequest, ModelRetrainRequest
 )
-from .cat import CatProfile, CreateCatProfileRequest
+from .cat import CatProfile, CreateCatProfileRequest, UpdateCatProfileRequest
 
 __all__ = [
     # Config models
@@ -29,5 +29,5 @@ __all__ = [
     "ModelSaveRequest", "ModelRetrainRequest",
     
     # Cat models
-    "CatProfile", "CreateCatProfileRequest"
+    "CatProfile", "CreateCatProfileRequest", "UpdateCatProfileRequest"
 ] 

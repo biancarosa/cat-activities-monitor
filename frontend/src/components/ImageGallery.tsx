@@ -368,27 +368,6 @@ export default function ImageGallery({ className = '', onStatsUpdate }: ImageGal
                       </Badge>
                       {image.cat_count > 0 && (
                         <Badge variant="default" className="text-xs flex items-center space-x-1">
-                          {image.activities_by_cat && Object.keys(image.activities_by_cat).length > 0 && (
-                            <div className="flex space-x-1 mr-1">
-                              {Object.keys(image.activities_by_cat).slice(0, 3).map((catIndex) => {
-                                const catIndexNum = parseInt(catIndex);
-                                const catColor = getCatColor(undefined, catIndexNum);
-                                return (
-                                  <div
-                                    key={catIndex}
-                                    className="h-2 w-2 rounded-full border"
-                                    style={{ 
-                                      backgroundColor: catColor,
-                                      borderColor: 'white'
-                                    }}
-                                  />
-                                );
-                              })}
-                              {Object.keys(image.activities_by_cat).length > 3 && (
-                                <span className="text-xs">+{Object.keys(image.activities_by_cat).length - 3}</span>
-                              )}
-                            </div>
-                          )}
                           <span>{image.cat_count} cat{image.cat_count > 1 ? 's' : ''}</span>
                         </Badge>
                       )}
@@ -418,63 +397,6 @@ export default function ImageGallery({ className = '', onStatsUpdate }: ImageGal
                           <span>{image.file_size_mb}MB</span>
                         </div>
                       </div>
-                      
-                      {/* Display activities organized by cat */}
-                      {image.activities_by_cat && Object.keys(image.activities_by_cat).length > 0 && (
-                        <div className="space-y-1">
-                          {Object.entries(image.activities_by_cat).map(([catIndex, catActivities]) => {
-                            const catIndexNum = parseInt(catIndex);
-                            const catColor = getCatColor(undefined, catIndexNum);
-                            const catColorLight = getCatColorLight(undefined, catIndexNum);
-                            
-                            return (
-                            <div key={catIndex} className="flex items-center space-x-1">
-                              <div 
-                                className="h-3 w-3 rounded-full border-2 flex-shrink-0"
-                                style={{ 
-                                  backgroundColor: catColorLight,
-                                  borderColor: catColor 
-                                }}
-                              />
-                              <span 
-                                className="text-xs font-medium"
-                                style={{ color: catColor }}
-                              >
-                                Cat {catIndexNum + 1}:
-                              </span>
-                              <div className="flex flex-wrap gap-1">
-                                {catActivities.slice(0, 2).map((activityData, i) => (
-                                  <Badge 
-                                    key={i} 
-                                    variant={activityData.activity === 'unknown' ? 'secondary' : 'outline'} 
-                                    className={`text-xs border ${activityData.activity === 'unknown' ? 'opacity-60' : ''}`}
-                                    style={{ 
-                                      borderColor: catColor,
-                                      color: activityData.activity === 'unknown' ? undefined : catColor 
-                                    }}
-                                    title={`${activityData.reasoning} (${(activityData.confidence * 100).toFixed(0)}%)`}
-                                  >
-                                    {activityData.activity}
-                                  </Badge>
-                                ))}
-                                {catActivities.length > 2 && (
-                                  <Badge 
-                                    variant="outline" 
-                                    className="text-xs border"
-                                    style={{ 
-                                      borderColor: catColor,
-                                      color: catColor 
-                                    }}
-                                  >
-                                    +{catActivities.length - 2}
-                                  </Badge>
-                                )}
-                              </div>
-                            </div>
-                            );
-                          })}
-                        </div>
-                      )}
                       
                       <div className="flex items-center justify-between pt-2">
                         <div className="flex items-center space-x-1">

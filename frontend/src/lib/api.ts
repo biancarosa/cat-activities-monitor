@@ -170,12 +170,6 @@ export interface ReprocessResult {
       reasoning: string;
       cat_index: number;
     }>;
-    activities_by_cat: Record<string, Array<{
-      activity: string;
-      confidence: number;
-      reasoning: string;
-      cat_index: number;
-    }>>;
     primary_activity: string | null;
   };
   reprocess_timestamp: string;
