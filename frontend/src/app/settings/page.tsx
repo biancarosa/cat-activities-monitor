@@ -514,7 +514,7 @@ export default function SettingsPage() {
             </Card>
           )}
 
-          {/* Training & ML Management */}
+          {/* Training & ML Management 
           <Card className="lg:col-span-2">
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
@@ -553,7 +553,6 @@ export default function SettingsPage() {
 
               {trainingStatus ? (
                 <div className="space-y-6">
-                  {/* Training Statistics */}
                   <div>
                     <h4 className="font-medium mb-3">Training Data Statistics</h4>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -572,7 +571,6 @@ export default function SettingsPage() {
                     </div>
                   </div>
 
-                  {/* Current Training Job */}
                   {trainingStatus.current_job && (
                     <div>
                       <h4 className="font-medium mb-3">Current Training Job</h4>
@@ -597,7 +595,6 @@ export default function SettingsPage() {
                     </div>
                   )}
 
-                  {/* Available Models */}
                   {trainingStatus.available_models.length > 0 && (
                     <div>
                       <h4 className="font-medium mb-3">Available Models</h4>
@@ -654,7 +651,6 @@ export default function SettingsPage() {
                     </div>
                   )}
 
-                  {/* Training Actions */}
                   <div>
                     <h4 className="font-medium mb-3">Training Actions</h4>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -715,6 +711,7 @@ export default function SettingsPage() {
               )}
             </CardContent>
           </Card>
+          */}
         </div>
       </div>
     </div>
