@@ -3,10 +3,12 @@ Cat profile routes.
 """
 
 import logging
+import uuid
+from datetime import datetime
 
 from fastapi import APIRouter, Request, HTTPException
 
-from models import CatProfile
+from models import CatProfile, CreateCatProfileRequest
 from utils import convert_datetime_fields_to_strings
 
 logger = logging.getLogger(__name__)
@@ -15,29 +17,39 @@ router = APIRouter(prefix="/cats")
 
 
 @router.post("")
-async def create_cat_profile(request: Request, cat_profile: CatProfile):
+async def create_cat_profile(request: Request, create_request: CreateCatProfileRequest):
     """Create a new cat profile."""
     try:
         database_service = request.app.state.database_service
         
-        # Check if cat already exists in database
-        existing_profile = await database_service.get_cat_profile_by_name(cat_profile.name)
+        # Check if cat name already exists
+        existing_profile = await database_service.get_cat_profile_by_name(create_request.name)
         if existing_profile is not None:
-            raise HTTPException(status_code=400, detail=f"Cat '{cat_profile.name}' already exists")
+            raise HTTPException(status_code=400, detail=f"Cat '{create_request.name}' already exists")
         
-        # Save to database
-        profile_data = cat_profile.model_dump()
+        # Create full cat profile data dict
+        profile_data = {
+            "cat_uuid": str(uuid.uuid4()),
+            "name": create_request.name,
+            "description": create_request.description,
+            "color": create_request.color,
+            "breed": create_request.breed,
+            "favorite_activities": create_request.favorite_activities,
+            "created_timestamp": datetime.now().isoformat(),
+            "total_detections": 0,
+            "average_confidence": 0.0,
+            "preferred_locations": []
+        }
         
-        # Convert datetime fields to strings for PostgreSQL
-        profile_data = convert_datetime_fields_to_strings(profile_data)
-            
-        await database_service.save_cat_profile(cat_profile.name, profile_data)
-        logger.info(f"🐱 Created new cat profile: {cat_profile.name}")
+        # Save to database (profile_data already has string timestamps)
+        await database_service.save_cat_profile(profile_data)
+        logger.info(f"🐱 Created new cat profile: {profile_data['name']} ({profile_data['cat_uuid']})")
         
         return {
             "message": "Cat profile created successfully",
-            "cat_name": cat_profile.name,
-            "created_timestamp": cat_profile.created_timestamp.isoformat(),
+            "cat_uuid": profile_data["cat_uuid"],
+            "cat_name": profile_data["name"],
+            "created_timestamp": profile_data["created_timestamp"],
             "persisted": True
         }
     
@@ -136,7 +148,7 @@ async def delete_cat_profile(request: Request, cat_name: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/{cat_name}/activity-history")
+@router.get("/by-name/{cat_name}/activity-history")
 async def get_cat_activity_history(request: Request, cat_name: str):
     """Get activity history for a specific named cat."""
     try:

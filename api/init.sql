@@ -16,7 +16,8 @@ CREATE TABLE IF NOT EXISTS feedback (
 );
 
 CREATE TABLE IF NOT EXISTS cat_profiles (
-    name TEXT PRIMARY KEY,
+    cat_uuid TEXT PRIMARY KEY,
+    name TEXT NOT NULL UNIQUE,
     description TEXT,
     color TEXT,
     breed TEXT,

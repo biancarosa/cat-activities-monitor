@@ -19,15 +19,20 @@ export const CAT_COLORS = [
 ];
 
 /**
- * Get a consistent color for a cat based on its name or index
+ * Get a consistent color for a cat based on its name, UUID, or index
  * @param catName - The cat's name (if available)
+ * @param catUuid - The cat's UUID (if available)
  * @param catIndex - The cat's index (0-based)
  * @returns Hex color string
  */
-export function getCatColor(catName?: string, catIndex: number = 0): string {
+export function getCatColor(catName?: string, catUuid?: string, catIndex: number = 0): string {
   if (catName) {
     // Use hash of cat name for consistent color assignment (same logic as backend)
     const colorHash = Math.abs(hashString(catName)) % CAT_COLORS.length;
+    return CAT_COLORS[colorHash];
+  } else if (catUuid) {
+    // Use hash of cat UUID for consistent color assignment
+    const colorHash = Math.abs(hashString(catUuid)) % CAT_COLORS.length;
     return CAT_COLORS[colorHash];
   } else {
     // Fall back to index-based color for unnamed cats
@@ -53,20 +58,22 @@ function hashString(str: string): number {
 /**
  * Get a lighter version of the cat color for backgrounds
  * @param catName - The cat's name (if available) 
+ * @param catUuid - The cat's UUID (if available)
  * @param catIndex - The cat's index (0-based)
  * @returns Hex color string with reduced opacity
  */
-export function getCatColorLight(catName?: string, catIndex: number = 0): string {
-  const color = getCatColor(catName, catIndex);
+export function getCatColorLight(catName?: string, catUuid?: string, catIndex: number = 0): string {
+  const color = getCatColor(catName, catUuid, catIndex);
   return color + "20"; // Add 20% opacity
 }
 
 /**
  * Get the cat color as CSS custom property
  * @param catName - The cat's name (if available)
+ * @param catUuid - The cat's UUID (if available)
  * @param catIndex - The cat's index (0-based)  
  * @returns CSS color value
  */
-export function getCatColorCSS(catName?: string, catIndex: number = 0): string {
-  return getCatColor(catName, catIndex);
+export function getCatColorCSS(catName?: string, catUuid?: string, catIndex: number = 0): string {
+  return getCatColor(catName, catUuid, catIndex);
 }

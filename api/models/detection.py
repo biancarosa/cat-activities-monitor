@@ -3,6 +3,7 @@ Detection models.
 """
 
 from typing import Dict, List, Optional
+from enum import Enum
 from pydantic import BaseModel, Field
 
 
@@ -42,6 +43,11 @@ class Detection(BaseModel):
             "width": 200.3,
             "height": 249.9
         }
+    )
+    cat_uuid: Optional[str] = Field(
+        None,
+        description="Unique identifier for this cat detection",
+        example="550e8400-e29b-41d4-a716-446655440000"
     )
 
 

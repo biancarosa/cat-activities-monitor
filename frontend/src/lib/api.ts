@@ -489,4 +489,92 @@ export const trainingApi = {
   retrain: (request?: ModelRetrainRequest) => apiClient.retrainModel(request),
   getStatus: () => apiClient.getTrainingStatus(),
   switchModel: (model: string) => apiClient.switchModel(model),
+};
+
+// Cat Profile interfaces
+export interface CatProfile {
+  cat_uuid: string;
+  name: string;
+  description?: string;
+  color?: string;
+  breed?: string;
+  favorite_activities?: string[];
+  created_timestamp: string;
+  last_seen_timestamp?: string;
+  total_detections: number;
+  average_confidence: number;
+  preferred_locations?: string[];
+}
+
+export interface CreateCatProfileRequest {
+  name: string;
+  description?: string;
+  color?: string;
+  breed?: string;
+  favorite_activities?: string[];
+}
+
+export interface UpdateCatProfileRequest {
+  name?: string;
+  description?: string;
+  color?: string;
+  breed?: string;
+  favorite_activities?: string[];
+}
+
+export interface CatProfileListResponse {
+  total_cats: number;
+  cats: CatProfile[];
+  data_source: string;
+}
+
+export interface CatProfileResponse {
+  message: string;
+  cat_uuid: string;
+  cat_name: string;
+  created_timestamp?: string;
+  persisted: boolean;
+}
+
+// Cat Profile API methods
+export const catProfileApi = {
+  list: (): Promise<CatProfileListResponse> => apiClient.request<CatProfileListResponse>('/cats'),
+  
+  create: (profileData: CreateCatProfileRequest): Promise<CatProfileResponse> => 
+    apiClient.request('/cats', {
+      method: 'POST',
+      body: JSON.stringify(profileData),
+    }),
+  
+  getByUuid: (catUuid: string): Promise<CatProfile> => 
+    apiClient.request<CatProfile>(`/cats/by-uuid/${encodeURIComponent(catUuid)}`),
+  
+  getByName: (catName: string): Promise<CatProfile> => 
+    apiClient.request<CatProfile>(`/cats/by-name/${encodeURIComponent(catName)}`),
+  
+  update: (catUuid: string, profileData: UpdateCatProfileRequest): Promise<CatProfileResponse> => 
+    apiClient.request(`/cats/${encodeURIComponent(catUuid)}`, {
+      method: 'PUT',
+      body: JSON.stringify(profileData),
+    }),
+  
+  delete: (catUuid: string): Promise<{ message: string; deleted_cat_uuid: string; deleted_cat_name: string }> => 
+    apiClient.request(`/cats/${encodeURIComponent(catUuid)}`, {
+      method: 'DELETE',
+    }),
+  
+  getActivityHistory: (catName: string): Promise<{
+    cat_name: string;
+    total_feedback_entries: number;
+    activity_history: Array<{
+      feedback_id: string;
+      timestamp: string;
+      image_filename: string;
+      detected_activity?: string;
+      activity_feedback?: string;
+      confidence?: number;
+      bounding_box: BoundingBox;
+    }>;
+    data_source: string;
+  }> => apiClient.request(`/cats/by-name/${encodeURIComponent(catName)}/activity-history`),
 }; 

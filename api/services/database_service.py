@@ -51,7 +51,8 @@ class DatabaseService:
             # Create cat_profiles table
             await conn.execute('''
                 CREATE TABLE IF NOT EXISTS cat_profiles (
-                    name TEXT PRIMARY KEY,
+                    cat_uuid TEXT PRIMARY KEY,
+                    name TEXT NOT NULL UNIQUE,
                     description TEXT,
                     color TEXT,
                     breed TEXT,
@@ -183,16 +184,17 @@ class DatabaseService:
             return count
     
     # Cat profile operations
-    async def save_cat_profile(self, cat_name: str, profile_data: dict):
-        """Save cat profile to database."""
+    async def save_cat_profile(self, profile_data: dict):
+        """Save cat profile to database using cat_uuid as primary key."""
         async with self.pool.acquire() as conn:
             await conn.execute('''
                 INSERT INTO cat_profiles 
-                (name, description, color, breed, favorite_activities, 
+                (cat_uuid, name, description, color, breed, favorite_activities, 
                  created_timestamp, last_seen_timestamp, total_detections, 
                  average_confidence, preferred_locations)
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-                ON CONFLICT (name) DO UPDATE SET
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+                ON CONFLICT (cat_uuid) DO UPDATE SET
+                    name = EXCLUDED.name,
                     description = EXCLUDED.description,
                     color = EXCLUDED.color,
                     breed = EXCLUDED.breed,
@@ -203,7 +205,8 @@ class DatabaseService:
                     preferred_locations = EXCLUDED.preferred_locations,
                     updated_at = CURRENT_TIMESTAMP
             ''', 
-                cat_name,
+                profile_data['cat_uuid'],
+                profile_data['name'],
                 profile_data.get('description'),
                 profile_data.get('color'),
                 profile_data.get('breed'),
@@ -220,9 +223,10 @@ class DatabaseService:
         async with self.pool.acquire() as conn:
             rows = await conn.fetch('SELECT * FROM cat_profiles ORDER BY name')
             
-            profiles = {}
+            profiles = []
             for row in rows:
-                profiles[row['name']] = {
+                profiles.append({
+                    'cat_uuid': row['cat_uuid'],
                     'name': row['name'],
                     'description': row['description'],
                     'color': row['color'],
@@ -233,7 +237,7 @@ class DatabaseService:
                     'total_detections': row['total_detections'],
                     'average_confidence': row['average_confidence'],
                     'preferred_locations': json.loads(row['preferred_locations'] or '[]')
-                }
+                })
             
             return profiles
     
@@ -244,6 +248,7 @@ class DatabaseService:
             
             if row:
                 return {
+                    'cat_uuid': row['cat_uuid'],
                     'name': row['name'],
                     'description': row['description'],
                     'color': row['color'],
@@ -257,8 +262,37 @@ class DatabaseService:
                 }
             return None
     
-    async def delete_cat_profile(self, cat_name: str):
-        """Delete cat profile from database."""
+    async def get_cat_profile_by_uuid(self, cat_uuid: str):
+        """Get specific cat profile by UUID."""
+        async with self.pool.acquire() as conn:
+            row = await conn.fetchrow('SELECT * FROM cat_profiles WHERE cat_uuid = $1', cat_uuid)
+            
+            if row:
+                return {
+                    'cat_uuid': row['cat_uuid'],
+                    'name': row['name'],
+                    'description': row['description'],
+                    'color': row['color'],
+                    'breed': row['breed'],
+                    'favorite_activities': json.loads(row['favorite_activities'] or '[]'),
+                    'created_timestamp': row['created_timestamp'],
+                    'last_seen_timestamp': row['last_seen_timestamp'],
+                    'total_detections': row['total_detections'],
+                    'average_confidence': row['average_confidence'],
+                    'preferred_locations': json.loads(row['preferred_locations'] or '[]')
+                }
+            return None
+    
+    async def delete_cat_profile(self, cat_uuid: str):
+        """Delete cat profile from database by UUID."""
+        async with self.pool.acquire() as conn:
+            result = await conn.execute('DELETE FROM cat_profiles WHERE cat_uuid = $1', cat_uuid)
+            # Extract row count from the result string (e.g., "DELETE 1" -> 1)
+            deleted_count = int(result.split()[1]) if result.split()[1].isdigit() else 0
+            return deleted_count > 0
+    
+    async def delete_cat_profile_by_name(self, cat_name: str):
+        """Delete cat profile from database by name (legacy support)."""
         async with self.pool.acquire() as conn:
             result = await conn.execute('DELETE FROM cat_profiles WHERE name = $1', cat_name)
             # Extract row count from the result string (e.g., "DELETE 1" -> 1)

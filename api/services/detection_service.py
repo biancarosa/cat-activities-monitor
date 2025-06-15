@@ -6,6 +6,7 @@ import io
 import logging
 import math
 import time
+import uuid
 from collections import deque
 from datetime import datetime
 from pathlib import Path
@@ -69,11 +70,15 @@ class DetectionService:
             "#82E0AA",  # Light Green
         ]
     
-    def _get_cat_color(self, cat_name: Optional[str] = None, cat_index: int = 0) -> str:
-        """Get a consistent color for a cat based on its name or index."""
+    def _get_cat_color(self, cat_name: Optional[str] = None, cat_uuid: Optional[str] = None, cat_index: int = 0) -> str:
+        """Get a consistent color for a cat based on its name, UUID, or index."""
         if cat_name:
             # Use hash of cat name for consistent color assignment
             color_hash = hash(cat_name) % len(self.box_colors)
+            return self.box_colors[color_hash]
+        elif cat_uuid:
+            # Use hash of cat UUID for consistent color assignment
+            color_hash = hash(cat_uuid) % len(self.box_colors)
             return self.box_colors[color_hash]
         else:
             # Fall back to index-based color for unnamed cats
@@ -200,6 +205,9 @@ class DetectionService:
                         
                         # Filter for target classes (cats/dogs)
                         if class_id in yolo_config.target_classes:
+                            # Generate unique UUID for each cat detection
+                            cat_uuid = str(uuid.uuid4()) if class_id == 15 else None
+                            
                             detection = Detection(
                                 class_id=class_id,
                                 class_name=COCO_CLASSES.get(class_id, f"class_{class_id}"),
@@ -209,7 +217,8 @@ class DetectionService:
                                     'x2': float(x2), 'y2': float(y2),
                                     'width': float(x2 - x1),
                                     'height': float(y2 - y1)
-                                }
+                                },
+                                cat_uuid=cat_uuid
                             )
                             
                             detections.append(detection)
@@ -273,14 +282,19 @@ class DetectionService:
                 x1, y1 = bbox['x1'], bbox['y1'] 
                 x2, y2 = bbox['x2'], bbox['y2']
                 
-                # Get color for this cat
-                color = self._get_cat_color(cat_index=i)
+                # Get color for this cat using UUID if available
+                color = self._get_cat_color(cat_uuid=detection.cat_uuid, cat_index=i)
                 
                 # Draw bounding box
                 draw.rectangle([x1, y1, x2, y2], outline=color, width=3)
                 
-                # Create label with class name, confidence, and cat index
-                label = f"Cat {i+1}: {detection.confidence:.2f}"
+                # Create label with class name, confidence, and UUID/index
+                if detection.cat_uuid:
+                    # Show short UUID (first 8 characters)
+                    short_uuid = detection.cat_uuid[:8]
+                    label = f"Cat {short_uuid}: {detection.confidence:.2f}"
+                else:
+                    label = f"Cat {i+1}: {detection.confidence:.2f}"
                 
                 # Draw label background
                 label_bbox = draw.textbbox((x1, y1 - 25), label, font=font)

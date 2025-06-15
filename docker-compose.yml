@@ -35,9 +35,12 @@ services:
       postgres:
         condition: service_healthy
     volumes:
+      - ./api:/app
+      - /app/.venv
       - ./api/ml_models/training_data:/app/ml_models/training_data
       - ./api/config.yaml:/app/config.yaml
       - ./api/detections:/app/detections
+    command: ["uv", "run", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
 
   # Frontend
   frontend:

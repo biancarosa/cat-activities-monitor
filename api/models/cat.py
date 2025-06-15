@@ -16,6 +16,11 @@ class CatProfile(BaseModel):
     Contains identification information, physical characteristics,
     behavioral patterns, and detection statistics for individual cats.
     """
+    cat_uuid: str = Field(
+        ...,
+        description="Unique UUID identifier for the cat profile",
+        example="550e8400-e29b-41d4-a716-446655440000"
+    )
     name: str = Field(
         ..., 
         description="Unique name identifier for the cat",
@@ -41,7 +46,7 @@ class CatProfile(BaseModel):
         example="Maine Coon",
         max_length=50
     )
-    favorite_activities: List[CatActivity] = Field(
+    favorite_activities: List[str] = Field(
         default_factory=list, 
         description="List of activities this cat is commonly observed doing"
     )
@@ -72,4 +77,39 @@ class CatProfile(BaseModel):
         default_factory=list, 
         description="Camera/image sources where this cat is commonly seen",
         example=["living_room_camera", "kitchen_camera"]
+    )
+
+
+class CreateCatProfileRequest(BaseModel):
+    """
+    Request model for creating a new cat profile.
+    """
+    name: str = Field(
+        ..., 
+        description="Unique name identifier for the cat",
+        example="Whiskers",
+        min_length=1,
+        max_length=50
+    )
+    description: Optional[str] = Field(
+        None, 
+        description="General description or notes about the cat",
+        example="A friendly orange tabby who loves to play with string toys",
+        max_length=500
+    )
+    color: Optional[str] = Field(
+        None, 
+        description="Primary color or color pattern of the cat",
+        example="Orange tabby with white chest",
+        max_length=100
+    )
+    breed: Optional[str] = Field(
+        None, 
+        description="Breed of the cat (if known)",
+        example="Maine Coon",
+        max_length=50
+    )
+    favorite_activities: List[str] = Field(
+        default_factory=list, 
+        description="List of activities this cat is commonly observed doing (as strings)"
     ) 
