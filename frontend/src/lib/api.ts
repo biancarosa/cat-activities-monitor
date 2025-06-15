@@ -78,6 +78,11 @@ export interface DetectionImage {
 export interface DetectionImagesResponse {
   images: DetectionImage[];
   total: number;
+  page: number;
+  limit: number;
+  total_pages: number;
+  has_next: boolean;
+  has_prev: boolean;
   detection_path: string;
   has_feedback_data: boolean;
 }
@@ -274,8 +279,8 @@ class ApiClient {
   }
 
   // Detection endpoints
-  async getDetectionImages(): Promise<DetectionImagesResponse> {
-    return this.request<DetectionImagesResponse>('/detections/images');
+  async getDetectionImages(page: number = 1, limit: number = 20): Promise<DetectionImagesResponse> {
+    return this.request<DetectionImagesResponse>(`/detections/images?page=${page}&limit=${limit}`);
   }
 
   async getImageAnnotations(imageFilename: string): Promise<ImageAnnotations> {
@@ -467,7 +472,7 @@ export interface TrainingStatus {
 }
 
 export const detectionApi = {
-  getImages: () => apiClient.getDetectionImages(),
+  getImages: (page?: number, limit?: number) => apiClient.getDetectionImages(page, limit),
   getImageAnnotations: (filename: string) => apiClient.getImageAnnotations(filename),
   reprocessImage: (filename: string) => apiClient.reprocessImage(filename),
   reprocessAllImages: () => apiClient.reprocessAllImages(),

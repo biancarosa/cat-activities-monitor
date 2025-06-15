@@ -107,9 +107,14 @@ async def cleanup_detection_database(request: Request, keep_days: int = 7):
     summary="List Detection Images",
     description="Get list of detection images with metadata and annotation information.",
     response_description="List of detection images with metadata")
-async def get_detection_images(request: Request):
+async def get_detection_images(request: Request, page: int = 1, limit: int = 20):
     """Get list of detection images with metadata - returns database data as-is."""
     try:
+        # Validate pagination parameters
+        if page < 1:
+            raise HTTPException(status_code=400, detail="Page must be >= 1")
+        if limit < 1 or limit > 100:
+            raise HTTPException(status_code=400, detail="Limit must be between 1 and 100")
         config_service = request.app.state.config_service
         database_service = request.app.state.database_service
         
@@ -276,9 +281,21 @@ async def get_detection_images(request: Request):
         # Sort by timestamp (newest first)
         images.sort(key=lambda x: x["timestamp"], reverse=True)
         
+        # Apply pagination
+        total_images = len(images)
+        total_pages = (total_images + limit - 1) // limit if total_images > 0 else 1
+        start = (page - 1) * limit
+        end = start + limit
+        paginated_images = images[start:end]
+        
         return {
-            "images": images,
-            "total": len(images),
+            "images": paginated_images,
+            "total": total_images,
+            "page": page,
+            "limit": limit,
+            "total_pages": total_pages,
+            "has_next": page < total_pages,
+            "has_prev": page > 1,
             "detection_path": str(detection_path),
             "has_feedback_data": len(feedback_database) > 0
         }

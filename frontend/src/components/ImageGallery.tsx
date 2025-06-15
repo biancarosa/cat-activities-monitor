@@ -23,6 +23,7 @@ import { getCatColor, getCatColorLight } from '@/lib/colors';
 import { configManager } from '@/lib/config';
 import JsonViewerModal from '@/components/JsonViewerModal';
 import FeedbackModal from '@/components/FeedbackModal';
+import { Pagination } from '@/components/ui/pagination';
 import Image from 'next/image';
 
 interface ImageGalleryProps {
@@ -42,38 +43,50 @@ export default function ImageGallery({ className = '', onStatsUpdate }: ImageGal
   const [reprocessingImages, setReprocessingImages] = useState<Set<string>>(new Set());
   const [feedbackStats, setFeedbackStats] = useState<{total: number, annotatedImages: number} | null>(null);
   const [configLoaded, setConfigLoaded] = useState(() => configManager.isConfigLoaded());
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalImages, setTotalImages] = useState(0);
+  const [pageSize] = useState(20);
 
-  const fetchImages = useCallback(async () => {
+  const fetchImages = useCallback(async (page: number = currentPage) => {
     try {
       setLoading(true);
       setError(null);
-      const response = await detectionApi.getImages();
+      const response = await detectionApi.getImages(page, pageSize);
       setImages(response.images);
+      setCurrentPage(response.page);
+      setTotalPages(response.total_pages);
+      setTotalImages(response.total);
       
-      // Update feedback stats
+      // Update feedback stats based on current page
       const annotatedCount = response.images.filter(img => img.has_feedback).length;
       setFeedbackStats({
-        total: response.images.length,
+        total: response.total,
         annotatedImages: annotatedCount
       });
       
-      // Notify parent component of stats update
-      onStatsUpdate?.(response.images.length, annotatedCount);
+      // Notify parent component of stats update (use total, not just current page)
+      onStatsUpdate?.(response.total, annotatedCount);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch images');
     } finally {
       setLoading(false);
     }
-  }, [onStatsUpdate]);
+  }, [currentPage, pageSize, onStatsUpdate]);
 
   const handleRefresh = async () => {
     try {
       setRefreshing(true);
-      await fetchImages();
+      await fetchImages(currentPage);
     } finally {
       setRefreshing(false);
     }
   };
+
+  const handlePageChange = useCallback(async (page: number) => {
+    setCurrentPage(page);
+    await fetchImages(page);
+  }, [fetchImages]);
 
   const handleFetchNew = async () => {
     try {
@@ -81,7 +94,7 @@ export default function ImageGallery({ className = '', onStatsUpdate }: ImageGal
       await cameraApi.fetchAll();
       // Wait a moment for images to be processed, then refresh
       setTimeout(() => {
-        fetchImages();
+        fetchImages(currentPage);
       }, 2000);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch new images');
@@ -107,8 +120,8 @@ export default function ImageGallery({ className = '', onStatsUpdate }: ImageGal
       // Clear success message after 5 seconds
       setTimeout(() => setSuccessMessage(null), 5000);
       
-      // Refresh the images list to show updated results
-      await fetchImages();
+      // Refresh the current page to show updated results
+      await fetchImages(currentPage);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to reprocess image');
     } finally {
@@ -137,8 +150,8 @@ export default function ImageGallery({ className = '', onStatsUpdate }: ImageGal
       // Clear success message after 8 seconds for bulk operations
       setTimeout(() => setSuccessMessage(null), 8000);
       
-      // Refresh the images list to show updated results
-      await fetchImages();
+      // Refresh the current page to show updated results
+      await fetchImages(currentPage);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to reprocess all images');
     } finally {
@@ -148,9 +161,11 @@ export default function ImageGallery({ className = '', onStatsUpdate }: ImageGal
 
   useEffect(() => {
     if (configLoaded) {
-      fetchImages();
+      fetchImages(1);
+      setCurrentPage(1);
     }
-  }, [fetchImages, configLoaded]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [configLoaded, pageSize]);
 
   // Listen for config loaded event and API URL changes
   useEffect(() => {
@@ -161,7 +176,8 @@ export default function ImageGallery({ className = '', onStatsUpdate }: ImageGal
     const handleApiUrlChanged = () => {
       // Force refresh images when API URL changes
       if (configLoaded) {
-        fetchImages();
+        setCurrentPage(1);
+        fetchImages(1);
       }
     };
 
@@ -310,9 +326,20 @@ export default function ImageGallery({ className = '', onStatsUpdate }: ImageGal
           </div>
         ) : (
           <>
-            <div className="mb-4 text-sm text-muted-foreground">
-              Showing {filteredImages.length} of {images.length} images
-              {selectedSource !== 'all' && ` from ${selectedSource}`}
+            <div className="mb-4 flex items-center justify-between">
+              <div className="text-sm text-muted-foreground">
+                Showing {filteredImages.length} of {totalImages} images
+                {selectedSource !== 'all' && ` from ${selectedSource}`}
+                {totalPages > 1 && ` (Page ${currentPage} of ${totalPages})`}
+              </div>
+              {totalPages > 1 && (
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  onPageChange={handlePageChange}
+                  className="justify-end"
+                />
+              )}
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -534,6 +561,16 @@ export default function ImageGallery({ className = '', onStatsUpdate }: ImageGal
                 </Card>
               ))}
             </div>
+            
+            {totalPages > 1 && (
+              <div className="mt-6 flex justify-center">
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  onPageChange={handlePageChange}
+                />
+              </div>
+            )}
           </>
         )}
       </CardContent>
