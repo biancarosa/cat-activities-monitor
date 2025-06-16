@@ -41,16 +41,21 @@ COCO_CLASSES = {
     79: 'toothbrush'
 }
 
-def convert_datetime_fields_to_strings(data: Dict[str, Any]) -> Dict[str, Any]:
+from typing import Union, List
+
+def convert_datetime_fields_to_strings(data: Union[Dict[str, Any], List[Dict[str, Any]]]) -> Union[Dict[str, Any], List[Dict[str, Any]]]:
     """
-    Convert datetime objects in a dictionary to ISO format strings for PostgreSQL compatibility.
-    
+    Convert datetime objects in a dictionary or a list of dictionaries to ISO format strings.
+
     Args:
-        data: Dictionary that may contain datetime objects
-        
+        data: Dictionary or list of dictionaries that may contain datetime objects
+
     Returns:
-        Dictionary with datetime objects converted to strings
+        Dictionary or list of dictionaries with datetime objects converted to strings
     """
+    if isinstance(data, list):
+        return [convert_datetime_fields_to_strings(item) if isinstance(item, dict) else item for item in data]
+
     converted_data = data.copy()
     
     for key, value in converted_data.items():
@@ -59,11 +64,11 @@ def convert_datetime_fields_to_strings(data: Dict[str, Any]) -> Dict[str, Any]:
         elif isinstance(value, dict):
             # Recursively handle nested dictionaries
             converted_data[key] = convert_datetime_fields_to_strings(value)
-        elif isinstance(value, list) and value and isinstance(value[0], dict):
-            # Handle lists of dictionaries
+        elif isinstance(value, list):
+            # Handle lists of dictionaries or other list types
             converted_data[key] = [
                 convert_datetime_fields_to_strings(item) if isinstance(item, dict) else item
                 for item in value
             ]
-    
+
     return converted_data

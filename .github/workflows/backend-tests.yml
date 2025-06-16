@@ -1,0 +1,32 @@
+name: Backend Tests
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v3
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          pip install uv
+          uv pip install $(grep 'dev-dependencies =' api/pyproject.toml | sed 's/dev-dependencies = \[//;s/\]//;s/,//g' | sed 's/"//g') --system
+
+      - name: Run tests
+        run: |
+          export PYTHONPATH=/home/runner/work/cat-activities-monitor/cat-activities-monitor:$PYTHONPATH
+          pytest api/tests
