@@ -4,14 +4,12 @@ Detection service for Cat Activities Monitor API.
 
 import io
 import logging
-import uuid
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 from utils import BOUNDING_BOX_COLORS
 import numpy as np
-from PIL import Image, ImageDraw, ImageFont, ImageEnhance
-from ultralytics import YOLO
+from PIL import Image, ImageDraw, ImageFont
 import cv2
 from skimage.metrics import structural_similarity as ssim
 
@@ -20,6 +18,7 @@ from models import (
     YOLOConfig, ChangeDetectionConfig
 )
 from services import DatabaseService
+from ml_pipeline import MLDetectionPipeline, YOLODetectionProcess, FeatureExtractionProcess
 
 logger = logging.getLogger(__name__)
 
@@ -46,10 +45,10 @@ COCO_CLASSES = {
 
 
 class DetectionService:
-    """Service for YOLO object detection."""
+    """Service for ML-based cat detection with feature extraction."""
     
     def __init__(self, database_service: DatabaseService):
-        self.ml_model: Optional[YOLO] = None
+        self.ml_pipeline: Optional[MLDetectionPipeline] = None
         self.previous_detections: Dict[str, Dict] = {}
         
         # Predefined bright colors for bounding boxes
@@ -66,31 +65,28 @@ class DetectionService:
         #         return profile.bounding_box_color
         return self.box_colors[cat_index % len(self.box_colors)]
     
-    def initialize_ml_model(self, yolo_config: YOLOConfig) -> YOLO:
-        """Initialize ML model for detection."""
+    async def initialize_ml_pipeline(self, yolo_config: YOLOConfig) -> MLDetectionPipeline:
+        """Initialize ML pipeline with YOLO detection and feature extraction."""
         try:
-            logger.info(f"Loading ML model: {yolo_config.model}")
+            logger.info("Initializing ML detection pipeline")
             
-            # Ensure ml_models directory exists if model path includes it
-            model_path = Path(yolo_config.model)
-            if "ml_models" in str(model_path) or model_path.parent.name == "ml_models":
-                model_path.parent.mkdir(parents=True, exist_ok=True)
-                logger.info(f"Ensured ML models directory exists: {model_path.parent}")
-            elif model_path.parent != Path('.'):  # If model is in other subdirectory
-                model_path.parent.mkdir(parents=True, exist_ok=True)
-                logger.info(f"Ensured model directory exists: {model_path.parent}")
+            # Create YOLO detection process
+            yolo_process = YOLODetectionProcess(config={'yolo_config': yolo_config})
             
-            self.ml_model = YOLO(yolo_config.model)
-            logger.info(f"ML model {yolo_config.model} loaded successfully")
+            # Create feature extraction process
+            feature_process = FeatureExtractionProcess()
             
-            # Create detection images directory if saving is enabled
-            if yolo_config.save_detection_images:
-                Path(yolo_config.detection_image_path).mkdir(parents=True, exist_ok=True)
-                logger.info(f"Detection images will be saved to: {yolo_config.detection_image_path}")
+            # Create pipeline with both processes
+            self.ml_pipeline = MLDetectionPipeline([yolo_process, feature_process])
             
-            return self.ml_model
+            # Initialize the pipeline
+            await self.ml_pipeline.initialize()
+            
+            logger.info("ML detection pipeline initialized successfully")
+            return self.ml_pipeline
+            
         except Exception as e:
-            logger.error(f"Failed to load ML model {yolo_config.model}: {e}")
+            logger.error(f"Failed to initialize ML pipeline: {e}")
             raise
     
     def calculate_image_similarity(self, img1_array: np.ndarray, img2_array: np.ndarray) -> float:
@@ -177,82 +173,20 @@ class DetectionService:
         
         return False, "no_significant_change"
     
-    def detect_objects_with_activity(self, image_data: bytes, yolo_config: YOLOConfig, image_name: str = "unknown") -> ImageDetections:
+    async def detect_objects_with_activity(self, image_data: bytes, yolo_config: YOLOConfig, image_name: str = "unknown") -> ImageDetections:
         """
         Enhanced object detection that includes cat activity recognition.
         """
         try:
-            if not self.ml_model:
-                raise RuntimeError("ML model not initialized")
+            if not self.ml_pipeline:
+                raise RuntimeError("ML pipeline not initialized")
             
-            # Convert bytes to PIL Image
+            # Convert bytes to PIL Image and then to numpy array
             image = Image.open(io.BytesIO(image_data))
-            image_width, image_height = image.size
+            image_array = np.array(image)
             
-            # Apply image preprocessing for better multi-cat detection
-            enhancer = ImageEnhance.Color(image)
-            processed_image = enhancer.enhance(0.5)  # 50% less saturated
-            
-            # Convert PIL Image to numpy array for YOLO
-            image_array = np.array(processed_image)
-            
-            # Run ML model detection with custom parameters
-            results = self.ml_model(
-                image_array,
-                conf=yolo_config.confidence_threshold,
-                iou=yolo_config.iou_threshold,
-                max_det=yolo_config.max_detections,
-                imgsz=yolo_config.image_size,
-                verbose=False
-            )
-            
-            # Process results
-            all_detections = []
-            target_detections = []
-            max_confidence = 0.0
-            
-            for result in results:
-                if result.boxes is not None:
-                    for box in result.boxes:
-                        # Get class ID and confidence
-                        class_id = int(box.cls[0])
-                        confidence = float(box.conf[0])
-                        class_name = COCO_CLASSES.get(class_id, f"class_{class_id}")
-                        
-                        # Get bounding box coordinates
-                        x1, y1, x2, y2 = box.xyxy[0].tolist()
-                        
-                        detection = Detection(
-                            class_id=class_id,
-                            class_name=class_name,
-                            confidence=confidence,
-                            bounding_box={
-                                "x1": x1,
-                                "y1": y1,
-                                "x2": x2,
-                                "y2": y2,
-                                "width": x2 - x1,
-                                "height": y2 - y1
-                            }
-                        )
-                        
-                        all_detections.append(detection)
-                        
-                        # Check if it's a target class (cat, dog, etc.)
-                        if class_id in yolo_config.target_classes:
-                            # add generated cat_uuid to detection
-                            # todo: match cat_uuid to cat_profile later
-                            detection.cat_uuid = str(uuid.uuid4())
-
-                            target_detections.append(detection)
-                            max_confidence = max(max_confidence, confidence)
-            
-            detection_result = ImageDetections(
-                cat_detected=len(target_detections) > 0,
-                confidence=max_confidence,
-                cats_count=len(target_detections),
-                detections=target_detections,
-            )
+            # Run ML pipeline (YOLO detection + feature extraction)
+            detection_result = await self.ml_pipeline.process_image(image_array)
             
             # Check if we should save the image (change detection)
             should_save = True
@@ -268,8 +202,8 @@ class DetectionService:
                 )
             
             # Save detection image if enabled and significant change detected
-            if yolo_config.save_detection_images and target_detections and should_save:
-                self._save_detection_image(image_array, target_detections, yolo_config, image_name, save_reason)
+            if yolo_config.save_detection_images and detection_result.detections and should_save:
+                self._save_detection_image(image_array, detection_result.detections, yolo_config, image_name, save_reason)
             elif yolo_config.save_detection_images and not should_save:
                 logger.debug(f"⏭️  Skipped saving image for '{image_name}' (reason: {save_reason})")
             
@@ -296,9 +230,9 @@ class DetectionService:
         except Exception as e:
             logger.error(f"Error during object detection with activity analysis: {e}")
             return ImageDetections(
+                detected=False,
                 cat_detected=False,
                 confidence=0.0,
-                count=0,
                 detections=[],
                 cats_count=0,
             )

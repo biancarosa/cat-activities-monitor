@@ -425,7 +425,7 @@ async def switch_model(request: Request):
         config_service.set_model(model_path)
         # Reload model in detection service
         config = config_service.config
-        detection_service.initialize_ml_model(config.global_.ml_model_config)
+        await detection_service.initialize_ml_pipeline(config.global_.ml_model_config)
         logger.info(f"Switched ML model to: {model_path}")
         return {"message": f"Switched model to {model_filename}", "current_model": model_path}
     except Exception as e:

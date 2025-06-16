@@ -65,9 +65,9 @@ class ImageService:
                 
                 # Perform object detection
                 detection_result = None
-                if self.detection_service.ml_model and yolo_config:
+                if self.detection_service.ml_pipeline and yolo_config:
                     try:
-                        detection_result = self.detection_service.detect_objects_with_activity(
+                        detection_result = await self.detection_service.detect_objects_with_activity(
                             image_data, 
                             yolo_config,
                             image_config.name
