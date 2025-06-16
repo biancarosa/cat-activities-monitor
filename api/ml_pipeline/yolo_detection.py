@@ -2,16 +2,15 @@
 YOLO-based cat detection process.
 """
 
-import io
 import logging
 import uuid
 from pathlib import Path
-from typing import Dict, Any, List
+from typing import Dict, Any
 import numpy as np
 from PIL import Image, ImageEnhance
 
 from ultralytics import YOLO
-from models import ImageDetections, Detection, YOLOConfig
+from models import ImageDetections, Detection
 from utils import COCO_CLASSES
 from .base_process import MLDetectionProcess
 
