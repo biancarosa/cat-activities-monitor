@@ -129,9 +129,9 @@ async def lifespan(app: FastAPI):
         config = config_service.load_config()
         logger.info(f"📋 Configuration loaded: {len(config.images)} image sources")
         
-        # Initialize ML model
-        detection_service.initialize_ml_model(config.global_.ml_model_config)
-        logger.info(f"🤖 ML model loaded: {config.global_.ml_model_config.model}")
+        # Initialize ML pipeline
+        await detection_service.initialize_ml_pipeline(config.global_.ml_model_config)
+        logger.info(f"🤖 ML pipeline loaded: {config.global_.ml_model_config.model}")
         
         # Store services in app state for dependency injection
         app.state.config_service = config_service

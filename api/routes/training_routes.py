@@ -287,7 +287,7 @@ async def export_training_data(request: Request):
         
         # Create enhanced dataset.yaml file that preserves COCO structure
         dataset_yaml = training_dir / "dataset.yaml"
-        from services.detection_service import COCO_CLASSES
+        from utils import COCO_CLASSES
         
         # Use FULL COCO class structure to preserve compatibility
         dataset_config = {
@@ -425,7 +425,7 @@ async def switch_model(request: Request):
         config_service.set_model(model_path)
         # Reload model in detection service
         config = config_service.config
-        detection_service.initialize_ml_model(config.global_.ml_model_config)
+        await detection_service.initialize_ml_pipeline(config.global_.ml_model_config)
         logger.info(f"Switched ML model to: {model_path}")
         return {"message": f"Switched model to {model_filename}", "current_model": model_path}
     except Exception as e:

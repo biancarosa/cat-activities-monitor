@@ -140,6 +140,8 @@ dependencies = [
     { name = "pyyaml" },
     { name = "scikit-image" },
     { name = "sqlalchemy", extra = ["asyncio"] },
+    { name = "torch" },
+    { name = "torchvision" },
     { name = "ultralytics" },
     { name = "uvicorn", extra = ["standard"] },
 ]
@@ -168,6 +170,8 @@ requires-dist = [
     { name = "pyyaml", specifier = ">=6.0.1" },
     { name = "scikit-image", specifier = ">=0.21.0" },
     { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2.0.41" },
+    { name = "torch", specifier = ">=2.0.0" },
+    { name = "torchvision", specifier = ">=0.15.0" },
     { name = "ultralytics", specifier = ">=8.0.0" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.24.0" },
 ]

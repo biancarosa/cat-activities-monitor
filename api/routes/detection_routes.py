@@ -205,7 +205,7 @@ async def get_detection_status(request: Request):
     response_description="List of available detection classes")
 async def get_available_classes():
     """Get available YOLO classes."""
-    from services.detection_service import COCO_CLASSES
+    from utils import COCO_CLASSES
     
     return {
         "classes": COCO_CLASSES,
@@ -255,7 +255,7 @@ async def reprocess_detection_image(request: Request, image_filename: str):
         
         # Reprocess the image with current detection service
         logger.info(f"🔄 Reprocessing detection for image: {image_filename}")
-        detection_result = detection_service.detect_objects_with_activity(
+        detection_result = await detection_service.detect_objects_with_activity(
             image_data, 
             yolo_config,
             source_name
@@ -378,7 +378,7 @@ async def reprocess_all_detection_images(request: Request):
                     image_data = f.read()
                 
                 # Reprocess the image
-                detection_result = detection_service.detect_objects_with_activity(
+                detection_result = await detection_service.detect_objects_with_activity(
                     image_data, 
                     yolo_config,
                     source_name

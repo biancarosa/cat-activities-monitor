@@ -49,6 +49,11 @@ class Detection(BaseModel):
         description="Unique identifier for this cat detection",
         example="550e8400-e29b-41d4-a716-446655440000"
     )
+    features: Optional[List[float]] = Field(
+        None,
+        description="Deep learning feature vector for cat recognition (2048 dimensions)",
+        example=[0.123, -0.456, 0.789]
+    )
 
 
 class CatActivity(str, Enum):
@@ -72,6 +77,11 @@ class ImageDetections(BaseModel):
     """
     List of detections for an image.
     """
+    detected: bool = Field(
+        ..., 
+        description="Whether any objects were detected in the image",
+        example=True
+    )
     cat_detected: bool = Field(
         ..., 
         description="Whether any cats were detected in the image",

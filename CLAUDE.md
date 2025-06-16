@@ -278,6 +278,16 @@ The frontend API URL is configured at runtime through the Settings page (`/setti
 
 ## Contributing
 
+### Development Workflow
+When starting new work, I will ask if you'd like to work on a feature branch. If yes, I will:
+1. Create a new feature branch with a descriptive name
+2. Implement the requested changes
+3. Commit the work with a descriptive message
+4. Push the branch to the remote repository
+5. Ask if you'd like me to create a pull request against the main branch
+
+This ensures all changes are properly tracked and can be reviewed before merging. You have control over when pull requests are created.
+
 ### Before Submitting Changes
 1. Run linting: `npm run lint` (frontend), `uv run ruff check` (backend)
 2. Run type checking: `tsc --noEmit` (frontend)
@@ -359,3 +369,8 @@ The application maintains visual consistency between backend-generated images an
 - Metadata includes cat identification and behavioral annotations
 - YOLO format export for model retraining with user feedback
 - Minimum 10 annotations required for retraining initiation
+
+## Workflow Memories
+
+- After making changes on either the api or frontend, restart docker container of the changed service, and check their logs to see if things are still working.
+```

@@ -65,16 +65,16 @@ class ImageService:
                 
                 # Perform object detection
                 detection_result = None
-                if self.detection_service.ml_model and yolo_config:
+                if self.detection_service.ml_pipeline and yolo_config:
                     try:
-                        detection_result = self.detection_service.detect_objects_with_activity(
+                        detection_result = await self.detection_service.detect_objects_with_activity(
                             image_data, 
                             yolo_config,
                             image_config.name
                         )
                         
                         if detection_result.cat_detected:
-                            from services.detection_service import COCO_CLASSES
+                            from utils import COCO_CLASSES
                             target_classes = [COCO_CLASSES.get(cls, f"class_{cls}") for cls in yolo_config.target_classes]
                             logger.info(f"🎯 TARGET OBJECTS DETECTED in '{image_config.name}'! "
                                       f"Count: {detection_result.cats_count}, "
