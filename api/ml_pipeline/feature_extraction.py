@@ -123,7 +123,15 @@ class FeatureExtractionProcess(MLDetectionProcess):
                     )
                     
                     updated_detections.append(updated_detection)
-                    logger.debug(f"Extracted {len(features)} features for cat {detection.cat_uuid}")
+                    
+                    # Log feature statistics for visibility
+                    feature_mean = np.mean(features)
+                    feature_std = np.std(features)
+                    feature_max = np.max(features)
+                    feature_min = np.min(features)
+                    logger.info(f"🧠 Extracted features for cat {detection.cat_uuid}: "
+                              f"dimensions={len(features)}, mean={feature_mean:.4f}, "
+                              f"std={feature_std:.4f}, range=[{feature_min:.4f}, {feature_max:.4f}]")
                     
                 except Exception as e:
                     logger.warning(f"Failed to extract features for detection {detection.cat_uuid}: {e}")
@@ -139,7 +147,7 @@ class FeatureExtractionProcess(MLDetectionProcess):
                 detections=updated_detections,
             )
             
-            logger.debug(f"Feature extraction completed for {len(updated_detections)} detections")
+            logger.info(f"🎯 Feature extraction completed for {len(updated_detections)} cats with ResNet50 embeddings")
             
             return updated_detection_results
             
