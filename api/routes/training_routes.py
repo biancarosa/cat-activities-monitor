@@ -287,7 +287,7 @@ async def export_training_data(request: Request):
         
         # Create enhanced dataset.yaml file that preserves COCO structure
         dataset_yaml = training_dir / "dataset.yaml"
-        from services.detection_service import COCO_CLASSES
+        from utils import COCO_CLASSES
         
         # Use FULL COCO class structure to preserve compatibility
         dataset_config = {

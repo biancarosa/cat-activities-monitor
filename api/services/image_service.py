@@ -74,7 +74,7 @@ class ImageService:
                         )
                         
                         if detection_result.cat_detected:
-                            from services.detection_service import COCO_CLASSES
+                            from utils import COCO_CLASSES
                             target_classes = [COCO_CLASSES.get(cls, f"class_{cls}") for cls in yolo_config.target_classes]
                             logger.info(f"🎯 TARGET OBJECTS DETECTED in '{image_config.name}'! "
                                       f"Count: {detection_result.cats_count}, "

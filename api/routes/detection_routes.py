@@ -205,7 +205,7 @@ async def get_detection_status(request: Request):
     response_description="List of available detection classes")
 async def get_available_classes():
     """Get available YOLO classes."""
-    from services.detection_service import COCO_CLASSES
+    from utils import COCO_CLASSES
     
     return {
         "classes": COCO_CLASSES,
