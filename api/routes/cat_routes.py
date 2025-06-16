@@ -10,7 +10,7 @@ from utils import BOUNDING_BOX_COLORS
 
 from fastapi import APIRouter, Request, HTTPException
 
-from models import CatProfile, CreateCatProfileRequest, UpdateCatProfileRequest
+from models import CreateCatProfileRequest, UpdateCatProfileRequest
 from utils import convert_datetime_fields_to_strings
 
 logger = logging.getLogger(__name__)

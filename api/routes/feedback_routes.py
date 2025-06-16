@@ -4,7 +4,6 @@ Feedback routes.
 
 import hashlib
 import logging
-from datetime import datetime
 from pathlib import Path
 
 from fastapi import APIRouter, Request, HTTPException

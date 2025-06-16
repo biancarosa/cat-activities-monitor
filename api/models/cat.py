@@ -6,7 +6,6 @@ from typing import List, Optional
 from datetime import datetime
 from pydantic import BaseModel, Field
 
-from .detection import CatActivity
 
 
 class CatProfile(BaseModel):

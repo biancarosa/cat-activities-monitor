@@ -7,7 +7,16 @@
       "Bash(python:*)",
       "Bash(npm run lint)",
       "Bash(npm run dev:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(git checkout:*)",
+      "Bash(mkdir:*)",
+      "Bash(uv run ruff:*)",
+      "Bash(uv add:*)",
+      "Bash(uv run:*)",
+      "Bash(docker-compose up:*)",
+      "Bash(docker-compose:*)",
+      "Bash(docker compose:*)",
+      "Bash(git add:*)"
     ],
     "deny": []
   },

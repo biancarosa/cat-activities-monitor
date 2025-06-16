@@ -3,15 +3,11 @@ Detection service for Cat Activities Monitor API.
 """
 
 import io
-import asyncio
 import logging
-import math
-import time
 import uuid
-from collections import deque
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple, Deque
+from typing import Dict, List, Optional, Tuple
 from utils import BOUNDING_BOX_COLORS
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont, ImageEnhance
@@ -21,7 +17,7 @@ from skimage.metrics import structural_similarity as ssim
 
 from models import (
     Detection, ImageDetections,
-    YOLOConfig, ChangeDetectionConfig, CatProfile
+    YOLOConfig, ChangeDetectionConfig
 )
 from services import DatabaseService
 
@@ -324,7 +320,6 @@ class DetectionService:
                 small_font = font
             
             # Try to get cat names from database if available
-            cat_names_by_index = {}
             if database_service:
                 try:
                     # TODO: Implement logic to get cat names based on location/previous feedback

@@ -3,28 +3,36 @@ Database service for Cat Activities Monitor API.
 """
 
 import logging
-import asyncpg
-import json
 import hashlib
 import os
 from datetime import datetime, timedelta
 import numpy as np
 import subprocess
 
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy import select, delete, desc, func, distinct
+
 from models import ImageDetections
+from persistence.models import CatProfile, DetectionResult, Feedback
 
 logger = logging.getLogger(__name__)
 
 
 class DatabaseService:
-    """Service for managing PostgreSQL database operations."""
+    """Service for managing PostgreSQL database operations using SQLAlchemy ORM."""
     
     def __init__(self, database_url: str = None):
         self.database_url = database_url or os.getenv(
             'DATABASE_URL', 
             'postgresql://db_user:db_password@localhost:5432/cats_monitor'
         )
-        self.pool = None
+        # Convert to async URL for SQLAlchemy
+        if self.database_url.startswith('postgresql://'):
+            self.database_url = self.database_url.replace('postgresql://', 'postgresql+asyncpg://', 1)
+        
+        self.engine = None
+        self.async_session = None
     
     async def init_database(self):
         """Ensure the database schema is up to date by running Alembic migrations. All schema management is now handled by Alembic."""
@@ -38,329 +46,408 @@ class DatabaseService:
         except Exception as e:
             logger.error(f"Alembic migration failed: {e}")
             raise
-        # Create the connection pool if not already created
-        if not self.pool:
-            self.pool = await asyncpg.create_pool(self.database_url)
+        
+        # Create SQLAlchemy engine and session factory if not already created
+        if not self.engine:
+            self.engine = create_async_engine(self.database_url, echo=False)
+            self.async_session = sessionmaker(
+                self.engine, class_=AsyncSession, expire_on_commit=False
+            )
         # All schema management is now handled by Alembic migrations.
     
-    async def get_db_connection(self):
-        """Get a database connection from the pool."""
-        if not self.pool:
-            self.pool = await asyncpg.create_pool(self.database_url)
-        return self.pool.acquire()
+    def get_session(self):
+        """Get a database session context manager."""
+        if not self.async_session:
+            if not self.engine:
+                self.engine = create_async_engine(self.database_url, echo=False)
+            self.async_session = sessionmaker(
+                self.engine, class_=AsyncSession, expire_on_commit=False
+            )
+        return self.async_session()
     
     # Feedback operations
     async def save_feedback(self, feedback_id: str, feedback_data: dict):
         """Save feedback to database."""
-        async with self.pool.acquire() as conn:
-            await conn.execute('''
-                INSERT INTO feedback 
-                (feedback_id, image_filename, image_path, original_detections, 
-                 user_annotations, feedback_type, notes, timestamp, user_id)
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-                ON CONFLICT (feedback_id) DO UPDATE SET
-                    image_filename = EXCLUDED.image_filename,
-                    image_path = EXCLUDED.image_path,
-                    original_detections = EXCLUDED.original_detections,
-                    user_annotations = EXCLUDED.user_annotations,
-                    feedback_type = EXCLUDED.feedback_type,
-                    notes = EXCLUDED.notes,
-                    timestamp = EXCLUDED.timestamp,
-                    user_id = EXCLUDED.user_id
-            ''', 
-                feedback_id,
-                feedback_data['image_filename'],
-                feedback_data['image_path'],
-                json.dumps(feedback_data['original_detections']),
-                json.dumps(feedback_data['user_annotations']),
-                feedback_data['feedback_type'],
-                feedback_data.get('notes'),
-                feedback_data['timestamp'],
-                feedback_data.get('user_id', 'anonymous')
-            )
+        async with self.get_session() as session:
+            # Check if feedback already exists
+            stmt = select(Feedback).where(Feedback.feedback_id == feedback_id)
+            result = await session.execute(stmt)
+            existing_feedback = result.scalar_one_or_none()
+            
+            if existing_feedback:
+                # Update existing feedback
+                existing_feedback.image_filename = feedback_data['image_filename']
+                existing_feedback.image_path = feedback_data['image_path']
+                existing_feedback.original_detections = feedback_data['original_detections']
+                existing_feedback.user_annotations = feedback_data['user_annotations']
+                existing_feedback.feedback_type = feedback_data['feedback_type']
+                existing_feedback.notes = feedback_data.get('notes')
+                existing_feedback.timestamp = feedback_data['timestamp']
+                existing_feedback.user_id = feedback_data.get('user_id', 'anonymous')
+            else:
+                # Create new feedback
+                new_feedback = Feedback(
+                    feedback_id=feedback_id,
+                    image_filename=feedback_data['image_filename'],
+                    image_path=feedback_data['image_path'],
+                    original_detections=feedback_data['original_detections'],
+                    user_annotations=feedback_data['user_annotations'],
+                    feedback_type=feedback_data['feedback_type'],
+                    notes=feedback_data.get('notes'),
+                    timestamp=feedback_data['timestamp'],
+                    user_id=feedback_data.get('user_id', 'anonymous')
+                )
+                session.add(new_feedback)
+            
+            await session.commit()
     
     async def get_all_feedback(self):
         """Get all feedback from database."""
-        async with self.pool.acquire() as conn:
-            rows = await conn.fetch('SELECT * FROM feedback ORDER BY timestamp DESC')
+        async with self.get_session() as session:
+            stmt = select(Feedback).order_by(desc(Feedback.timestamp))
+            result = await session.execute(stmt)
+            feedback_rows = result.scalars().all()
             
             feedback_dict = {}
-            for row in rows:
-                feedback_dict[row['feedback_id']] = {
-                    'image_filename': row['image_filename'],
-                    'image_path': row['image_path'],
-                    'original_detections': json.loads(row['original_detections']),
-                    'user_annotations': json.loads(row['user_annotations']),
-                    'feedback_type': row['feedback_type'],
-                    'notes': row['notes'],
-                    'timestamp': row['timestamp'],
-                    'user_id': row['user_id']
+            for feedback in feedback_rows:
+                feedback_dict[feedback.feedback_id] = {
+                    'image_filename': feedback.image_filename,
+                    'image_path': feedback.image_path,
+                    'original_detections': feedback.original_detections,
+                    'user_annotations': feedback.user_annotations,
+                    'feedback_type': feedback.feedback_type,
+                    'notes': feedback.notes,
+                    'timestamp': feedback.timestamp,
+                    'user_id': feedback.user_id
                 }
             
             return feedback_dict
     
     async def get_feedback_by_id(self, feedback_id: str):
         """Get specific feedback by ID."""
-        async with self.pool.acquire() as conn:
-            row = await conn.fetchrow('SELECT * FROM feedback WHERE feedback_id = $1', feedback_id)
+        async with self.get_session() as session:
+            stmt = select(Feedback).where(Feedback.feedback_id == feedback_id)
+            result = await session.execute(stmt)
+            feedback = result.scalar_one_or_none()
             
-            if row:
+            if feedback:
                 return {
-                    'image_filename': row['image_filename'],
-                    'image_path': row['image_path'],
-                    'original_detections': json.loads(row['original_detections']),
-                    'user_annotations': json.loads(row['user_annotations']),
-                    'feedback_type': row['feedback_type'],
-                    'notes': row['notes'],
-                    'timestamp': row['timestamp'],
-                    'user_id': row['user_id']
+                    'image_filename': feedback.image_filename,
+                    'image_path': feedback.image_path,
+                    'original_detections': feedback.original_detections,
+                    'user_annotations': feedback.user_annotations,
+                    'feedback_type': feedback.feedback_type,
+                    'notes': feedback.notes,
+                    'timestamp': feedback.timestamp,
+                    'user_id': feedback.user_id
                 }
             return None
     
     async def delete_feedback(self, feedback_id: str):
         """Delete feedback from database."""
-        async with self.pool.acquire() as conn:
-            result = await conn.execute('DELETE FROM feedback WHERE feedback_id = $1', feedback_id)
-            # Extract row count from the result string (e.g., "DELETE 1" -> 1)
-            deleted_count = int(result.split()[1]) if result.split()[1].isdigit() else 0
-            return deleted_count > 0
+        async with self.get_session() as session:
+            stmt = delete(Feedback).where(Feedback.feedback_id == feedback_id)
+            result = await session.execute(stmt)
+            await session.commit()
+            return result.rowcount > 0
     
     async def get_feedback_count(self):
         """Get total feedback count."""
-        async with self.pool.acquire() as conn:
-            count = await conn.fetchval('SELECT COUNT(*) FROM feedback')
-            return count
+        async with self.get_session() as session:
+            stmt = select(func.count(Feedback.feedback_id))
+            result = await session.execute(stmt)
+            return result.scalar()
     
     # Cat profile operations
     async def save_cat_profile(self, profile_data: dict):
         """Save cat profile to database using cat_uuid as primary key."""
-        async with self.pool.acquire() as conn:
-            await conn.execute('''
-                INSERT INTO cat_profiles 
-                (cat_uuid, name, description, color, breed, favorite_activities, 
-                 created_timestamp, last_seen_timestamp, total_detections, 
-                 average_confidence, preferred_locations)
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-                ON CONFLICT (cat_uuid) DO UPDATE SET
-                    name = EXCLUDED.name,
-                    description = EXCLUDED.description,
-                    color = EXCLUDED.color,
-                    breed = EXCLUDED.breed,
-                    favorite_activities = EXCLUDED.favorite_activities,
-                    last_seen_timestamp = EXCLUDED.last_seen_timestamp,
-                    total_detections = EXCLUDED.total_detections,
-                    average_confidence = EXCLUDED.average_confidence,
-                    preferred_locations = EXCLUDED.preferred_locations,
-                    updated_at = CURRENT_TIMESTAMP
-            ''', 
-                profile_data['cat_uuid'],
-                profile_data['name'],
-                profile_data.get('description'),
-                profile_data.get('color'),
-                profile_data.get('breed'),
-                json.dumps(profile_data.get('favorite_activities', [])),
-                profile_data['created_timestamp'],
-                profile_data.get('last_seen_timestamp'),
-                profile_data.get('total_detections', 0),
-                profile_data.get('average_confidence', 0.0),
-                json.dumps(profile_data.get('preferred_locations', []))
-            )
+        async with self.get_session() as session:
+            # Check if profile already exists
+            stmt = select(CatProfile).where(CatProfile.cat_uuid == profile_data['cat_uuid'])
+            result = await session.execute(stmt)
+            existing_profile = result.scalar_one_or_none()
+            
+            if existing_profile:
+                # Update existing profile
+                existing_profile.name = profile_data['name']
+                existing_profile.description = profile_data.get('description')
+                existing_profile.color = profile_data.get('color')
+                existing_profile.breed = profile_data.get('breed')
+                existing_profile.favorite_activities = profile_data.get('favorite_activities', [])
+                existing_profile.last_seen_timestamp = profile_data.get('last_seen_timestamp')
+                existing_profile.total_detections = profile_data.get('total_detections', 0)
+                existing_profile.average_confidence = profile_data.get('average_confidence', 0.0)
+                existing_profile.preferred_locations = profile_data.get('preferred_locations', [])
+                existing_profile.bounding_box_color = profile_data.get('bounding_box_color', '#FFA500')
+            else:
+                # Create new profile
+                new_profile = CatProfile(
+                    cat_uuid=profile_data['cat_uuid'],
+                    name=profile_data['name'],
+                    description=profile_data.get('description'),
+                    color=profile_data.get('color'),
+                    breed=profile_data.get('breed'),
+                    favorite_activities=profile_data.get('favorite_activities', []),
+                    created_timestamp=profile_data['created_timestamp'],
+                    last_seen_timestamp=profile_data.get('last_seen_timestamp'),
+                    total_detections=profile_data.get('total_detections', 0),
+                    average_confidence=profile_data.get('average_confidence', 0.0),
+                    preferred_locations=profile_data.get('preferred_locations', []),
+                    bounding_box_color=profile_data.get('bounding_box_color', '#FFA500')
+                )
+                session.add(new_profile)
+            
+            await session.commit()
     
     async def get_all_cat_profiles(self):
         """Get all cat profiles from database."""
-        async with self.pool.acquire() as conn:
-            rows = await conn.fetch('SELECT * FROM cat_profiles ORDER BY name')
+        async with self.get_session() as session:
+            stmt = select(CatProfile).order_by(CatProfile.name)
+            result = await session.execute(stmt)
+            profile_rows = result.scalars().all()
             
             profiles = []
-            for row in rows:
+            for profile in profile_rows:
                 profiles.append({
-                    'cat_uuid': row['cat_uuid'],
-                    'name': row['name'],
-                    'description': row['description'],
-                    'color': row['color'],
-                    'breed': row['breed'],
-                    'favorite_activities': json.loads(row['favorite_activities'] or '[]'),
-                    'created_timestamp': row['created_timestamp'],
-                    'last_seen_timestamp': row['last_seen_timestamp'],
-                    'total_detections': row['total_detections'],
-                    'average_confidence': row['average_confidence'],
-                    'preferred_locations': json.loads(row['preferred_locations'] or '[]')
+                    'cat_uuid': profile.cat_uuid,
+                    'name': profile.name,
+                    'description': profile.description,
+                    'color': profile.color,
+                    'breed': profile.breed,
+                    'favorite_activities': profile.favorite_activities or [],
+                    'created_timestamp': profile.created_timestamp,
+                    'last_seen_timestamp': profile.last_seen_timestamp,
+                    'total_detections': profile.total_detections,
+                    'average_confidence': profile.average_confidence,
+                    'preferred_locations': profile.preferred_locations or [],
+                    'bounding_box_color': profile.bounding_box_color
                 })
             
             return profiles
     
     async def get_cat_profile_by_name(self, cat_name: str):
         """Get specific cat profile by name."""
-        async with self.pool.acquire() as conn:
-            row = await conn.fetchrow('SELECT * FROM cat_profiles WHERE name = $1', cat_name)
+        async with self.get_session() as session:
+            stmt = select(CatProfile).where(CatProfile.name == cat_name)
+            result = await session.execute(stmt)
+            profile = result.scalar_one_or_none()
             
-            if row:
+            if profile:
                 return {
-                    'cat_uuid': row['cat_uuid'],
-                    'name': row['name'],
-                    'description': row['description'],
-                    'color': row['color'],
-                    'breed': row['breed'],
-                    'favorite_activities': json.loads(row['favorite_activities'] or '[]'),
-                    'created_timestamp': row['created_timestamp'],
-                    'last_seen_timestamp': row['last_seen_timestamp'],
-                    'total_detections': row['total_detections'],
-                    'average_confidence': row['average_confidence'],
-                    'preferred_locations': json.loads(row['preferred_locations'] or '[]')
+                    'cat_uuid': profile.cat_uuid,
+                    'name': profile.name,
+                    'description': profile.description,
+                    'color': profile.color,
+                    'breed': profile.breed,
+                    'favorite_activities': profile.favorite_activities or [],
+                    'created_timestamp': profile.created_timestamp,
+                    'last_seen_timestamp': profile.last_seen_timestamp,
+                    'total_detections': profile.total_detections,
+                    'average_confidence': profile.average_confidence,
+                    'preferred_locations': profile.preferred_locations or [],
+                    'bounding_box_color': profile.bounding_box_color
                 }
             return None
     
     async def get_cat_profile_by_uuid(self, cat_uuid: str):
         """Get specific cat profile by UUID."""
-        async with self.pool.acquire() as conn:
-            row = await conn.fetchrow('SELECT * FROM cat_profiles WHERE cat_uuid = $1', cat_uuid)
+        async with self.get_session() as session:
+            stmt = select(CatProfile).where(CatProfile.cat_uuid == cat_uuid)
+            result = await session.execute(stmt)
+            profile = result.scalar_one_or_none()
             
-            if row:
+            if profile:
                 return {
-                    'cat_uuid': row['cat_uuid'],
-                    'name': row['name'],
-                    'description': row['description'],
-                    'color': row['color'],
-                    'breed': row['breed'],
-                    'favorite_activities': json.loads(row['favorite_activities'] or '[]'),
-                    'created_timestamp': row['created_timestamp'],
-                    'last_seen_timestamp': row['last_seen_timestamp'],
-                    'total_detections': row['total_detections'],
-                    'average_confidence': row['average_confidence'],
-                    'preferred_locations': json.loads(row['preferred_locations'] or '[]')
+                    'cat_uuid': profile.cat_uuid,
+                    'name': profile.name,
+                    'description': profile.description,
+                    'color': profile.color,
+                    'breed': profile.breed,
+                    'favorite_activities': profile.favorite_activities or [],
+                    'created_timestamp': profile.created_timestamp,
+                    'last_seen_timestamp': profile.last_seen_timestamp,
+                    'total_detections': profile.total_detections,
+                    'average_confidence': profile.average_confidence,
+                    'preferred_locations': profile.preferred_locations or [],
+                    'bounding_box_color': profile.bounding_box_color
                 }
             return None
     
     async def delete_cat_profile(self, cat_uuid: str):
         """Delete cat profile from database by UUID."""
-        async with self.pool.acquire() as conn:
-            result = await conn.execute('DELETE FROM cat_profiles WHERE cat_uuid = $1', cat_uuid)
-            # Extract row count from the result string (e.g., "DELETE 1" -> 1)
-            deleted_count = int(result.split()[1]) if result.split()[1].isdigit() else 0
-            return deleted_count > 0
+        async with self.get_session() as session:
+            stmt = delete(CatProfile).where(CatProfile.cat_uuid == cat_uuid)
+            result = await session.execute(stmt)
+            await session.commit()
+            return result.rowcount > 0
     
     async def delete_cat_profile_by_name(self, cat_name: str):
         """Delete cat profile from database by name (legacy support)."""
-        async with self.pool.acquire() as conn:
-            result = await conn.execute('DELETE FROM cat_profiles WHERE name = $1', cat_name)
-            # Extract row count from the result string (e.g., "DELETE 1" -> 1)
-            deleted_count = int(result.split()[1]) if result.split()[1].isdigit() else 0
-            return deleted_count > 0
+        async with self.get_session() as session:
+            stmt = delete(CatProfile).where(CatProfile.name == cat_name)
+            result = await session.execute(stmt)
+            await session.commit()
+            return result.rowcount > 0
     
     async def get_cat_profiles_count(self):
         """Get total cat profiles count."""
-        async with self.pool.acquire() as conn:
-            count = await conn.fetchval('SELECT COUNT(*) FROM cat_profiles')
-            return count
+        async with self.get_session() as session:
+            stmt = select(func.count(CatProfile.cat_uuid))
+            result = await session.execute(stmt)
+            return result.scalar()
     
     # Detection results operations
     async def save_detection_result(self, source_name: str, detection_result: ImageDetections, image_array: np.ndarray = None, image_filename: str = None):
         """Save detection result to database. Never overwrites existing detections for the same image."""
-        async with self.pool.acquire() as conn:
+        async with self.get_session() as session:
+            # Check if detection result already exists
+            stmt = select(DetectionResult).where(
+                DetectionResult.source_name == source_name,
+                DetectionResult.image_filename == image_filename
+            )
+            result = await session.execute(stmt)
+            existing_result = result.scalar_one_or_none()
+            
+            if existing_result:
+                logger.debug(f"⏭️ Detection result already exists for {source_name} - {image_filename}, skipping")
+                return
+            
             # Create hash of image array for similarity comparison (optional)
             image_hash = None
             if image_array is not None:
                 image_hash = hashlib.md5(image_array.tobytes()).hexdigest()
             
-            # Convert detections to JSON
-            detections_json = json.dumps([
+            # Convert detections to JSON format for storage
+            detections_json = [
                 {
                     "class_id": d.class_id,
                     "class_name": d.class_name,
                     "confidence": d.confidence,
-                    "bounding_box": d.bounding_box
+                    "bounding_box": d.bounding_box,
+                    "cat_uuid": getattr(d, 'cat_uuid', None)
                 } for d in detection_result.detections
-            ])
+            ]
             
-            # Use INSERT ... ON CONFLICT DO NOTHING to never overwrite existing detections
-            result = await conn.execute('''
-                INSERT INTO detection_results 
-                (source_name, image_filename, cat_detected, cats_count, confidence, detections, image_array_hash, timestamp)
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-                ON CONFLICT (source_name, image_filename) DO NOTHING
-            ''', 
-                source_name,
-                image_filename,
-                detection_result.cat_detected,
-                detection_result.cats_count,
-                detection_result.confidence,
-                detections_json,
-                image_hash,
-                datetime.now().isoformat()
+            # Create new detection result
+            new_detection = DetectionResult(
+                source_name=source_name,
+                image_filename=image_filename,
+                cat_detected=detection_result.cat_detected,
+                cats_count=detection_result.cats_count,
+                confidence=detection_result.confidence,
+                detections=detections_json,
+                image_array_hash=image_hash,
+                timestamp=datetime.now().isoformat()
             )
             
-            # Check if the insert was successful (not ignored due to duplicate)
-            inserted_count = int(result.split()[1]) if result.split()[1].isdigit() else 0
-            if inserted_count > 0:
-                logger.debug(f"💾 Saved new detection result for {source_name} - {image_filename}")
-            else:
-                logger.debug(f"⏭️ Detection result already exists for {source_name} - {image_filename}, skipping")
+            session.add(new_detection)
+            await session.commit()
+            logger.debug(f"💾 Saved new detection result for {source_name} - {image_filename}")
     
     async def get_latest_detection_result(self, source_name: str):
         """Get the latest detection result for a source."""
-        async with self.pool.acquire() as conn:
-            row = await conn.fetchrow('''
-                SELECT * FROM detection_results 
-                WHERE source_name = $1 
-                ORDER BY created_at DESC 
-                LIMIT 1
-            ''', source_name)
+        async with self.get_session() as session:
+            stmt = select(DetectionResult).where(
+                DetectionResult.source_name == source_name
+            ).order_by(desc(DetectionResult.created_at)).limit(1)
             
-            if row:
+            result = await session.execute(stmt)
+            detection = result.scalar_one_or_none()
+            
+            if detection:
                 return {
-                    "detected": bool(row['detected']),
-                    "cats_count": row['cats_count'],
-                    "confidence": row['confidence'],
-                    "detections": json.loads(row['detections']) if row['detections'] else [],
-                    "timestamp": row['timestamp']
+                    "cat_detected": bool(detection.cat_detected),
+                    "cats_count": detection.cats_count,
+                    "confidence": detection.confidence,
+                    "detections": detection.detections if detection.detections else [],
+                    "timestamp": detection.timestamp
                 }
             return None
     
     async def get_all_detection_results(self):
         """Get all detection results grouped by source."""
-        async with self.pool.acquire() as conn:
-            sources = await conn.fetch('''
-                SELECT source_name, MAX(created_at) as latest_time
-                FROM detection_results 
-                GROUP BY source_name
-            ''')
+        async with self.get_session() as session:
+            # Get distinct source names
+            sources_stmt = select(distinct(DetectionResult.source_name))
+            sources_result = await session.execute(sources_stmt)
+            source_names = sources_result.scalars().all()
             
             results = {}
             
-            for source_row in sources:
-                source_name = source_row['source_name']
-                
+            for source_name in source_names:
                 # Get the latest detection for this source
-                row = await conn.fetchrow('''
-                    SELECT * FROM detection_results 
-                    WHERE source_name = $1 
-                    ORDER BY created_at DESC 
-                    LIMIT 1
-                ''', source_name)
+                stmt = select(DetectionResult).where(
+                    DetectionResult.source_name == source_name
+                ).order_by(desc(DetectionResult.created_at)).limit(1)
                 
-                if row:
+                result = await session.execute(stmt)
+                detection = result.scalar_one_or_none()
+                
+                if detection:
                     results[source_name] = {
-                        "cat_detected": bool(row['cat_detected']),
-                        "cats_count": row['cats_count'],
-                        "confidence": row['confidence'],
-                        "detections": json.loads(row['detections']) if row['detections'] else [],
-                        "timestamp": row['timestamp']
+                        "cat_detected": bool(detection.cat_detected),
+                        "cats_count": detection.cats_count,
+                        "confidence": detection.confidence,
+                        "detections": detection.detections if detection.detections else [],
+                        "timestamp": detection.timestamp
                     }
             
             return results
     
+    async def get_paginated_detection_results(self, page: int = 1, limit: int = 20):
+        """Get paginated detection results."""
+        async with self.get_session() as session:
+            # Get total count
+            count_stmt = select(func.count(DetectionResult.id))
+            count_result = await session.execute(count_stmt)
+            total = count_result.scalar()
+            
+            # Get paginated results
+            offset = (page - 1) * limit
+            stmt = select(DetectionResult).order_by(desc(DetectionResult.created_at)).offset(offset).limit(limit)
+            result = await session.execute(stmt)
+            detection_results = result.scalars().all()
+            
+            # Convert to dict format
+            results = []
+            for detection in detection_results:
+                results.append({
+                    'source_name': detection.source_name,
+                    'image_filename': detection.image_filename,
+                    'timestamp': detection.timestamp,
+                    'cats_count': detection.cats_count,
+                    'confidence': detection.confidence,
+                    'detections': detection.detections if detection.detections else [],
+                    'created_at': detection.created_at
+                })
+            
+            return {
+                'results': results,
+                'total': total,
+                'page': page,
+                'limit': limit
+            }
+    
+    async def delete_detection_result_by_filename(self, image_filename: str):
+        """Delete detection result by image filename."""
+        async with self.get_session() as session:
+            stmt = delete(DetectionResult).where(DetectionResult.image_filename == image_filename)
+            result = await session.execute(stmt)
+            await session.commit()
+            return result.rowcount
+    
     async def cleanup_old_detection_results(self, keep_days: int = 7):
         """Clean up old detection results, keeping only the specified number of days."""
-        async with self.pool.acquire() as conn:
+        async with self.get_session() as session:
             cutoff_date = datetime.now() - timedelta(days=keep_days)
             
-            result = await conn.execute('''
-                DELETE FROM detection_results 
-                WHERE created_at < $1
-            ''', cutoff_date)
+            stmt = delete(DetectionResult).where(
+                DetectionResult.created_at < cutoff_date
+            )
+            result = await session.execute(stmt)
+            await session.commit()
             
-            # Extract row count from the result string (e.g., "DELETE 5" -> 5)
-            deleted_count = int(result.split()[1]) if result.split()[1].isdigit() else 0
+            deleted_count = result.rowcount
             
             if deleted_count > 0:
                 logger.info(f"🧹 Cleaned up {deleted_count} old detection results older than {keep_days} days")
@@ -369,32 +456,33 @@ class DatabaseService:
     
     async def get_recent_detection_results(self, limit_per_source: int = 10):
         """Get recent detection results for all sources to restore activity history."""
-        async with self.pool.acquire() as conn:
+        async with self.get_session() as session:
             # Get all unique source names
-            source_rows = await conn.fetch('SELECT DISTINCT source_name FROM detection_results')
-            sources = [row['source_name'] for row in source_rows]
+            sources_stmt = select(distinct(DetectionResult.source_name))
+            sources_result = await session.execute(sources_stmt)
+            source_names = sources_result.scalars().all()
             
             results = {}
             
-            for source_name in sources:
+            for source_name in source_names:
                 # Get recent detections for this source
-                rows = await conn.fetch('''
-                    SELECT * FROM detection_results 
-                    WHERE source_name = $1 
-                    ORDER BY created_at DESC 
-                    LIMIT $2
-                ''', source_name, limit_per_source)
+                stmt = select(DetectionResult).where(
+                    DetectionResult.source_name == source_name
+                ).order_by(desc(DetectionResult.created_at)).limit(limit_per_source)
+                
+                result = await session.execute(stmt)
+                detections = result.scalars().all()
                 
                 source_results = []
                 
-                for row in rows:
+                for detection in detections:
                     source_results.append({
-                        "cat_detected": bool(row['cat_detected']),
-                        "cats_count": row['cats_count'],
-                        "confidence": row['confidence'],
-                        "detections": json.loads(row['detections']) if row['detections'] else [],
-                        "timestamp": row['timestamp'],
-                        "created_at": row['created_at']
+                        "cat_detected": bool(detection.cat_detected),
+                        "cats_count": detection.cats_count,
+                        "confidence": detection.confidence,
+                        "detections": detection.detections if detection.detections else [],
+                        "timestamp": detection.timestamp,
+                        "created_at": detection.created_at
                     })
                 
                 results[source_name] = source_results
@@ -403,22 +491,22 @@ class DatabaseService:
     
     async def get_detection_result_by_image(self, image_filename: str):
         """Get detection result for a specific image filename."""
-        async with self.pool.acquire() as conn:
-            row = await conn.fetchrow('''
-                SELECT * FROM detection_results 
-                WHERE image_filename = $1 
-                ORDER BY created_at DESC 
-                LIMIT 1
-            ''', image_filename)
+        async with self.get_session() as session:
+            stmt = select(DetectionResult).where(
+                DetectionResult.image_filename == image_filename
+            ).order_by(desc(DetectionResult.created_at)).limit(1)
             
-            if row:
+            result = await session.execute(stmt)
+            detection = result.scalar_one_or_none()
+            
+            if detection:
                 return {
-                    "cat_detected": bool(row['cat_detected']),
-                    "cats_count": row['cats_count'],
-                    "confidence": row['confidence'],
-                    "detections": json.loads(row['detections']) if row['detections'] else [],
-                    "timestamp": row['timestamp'],
-                    "source_name": row['source_name'],
-                    "image_filename": row['image_filename']
+                    "cat_detected": bool(detection.cat_detected),
+                    "cats_count": detection.cats_count,
+                    "confidence": detection.confidence,
+                    "detections": detection.detections if detection.detections else [],
+                    "timestamp": detection.timestamp,
+                    "source_name": detection.source_name,
+                    "image_filename": detection.image_filename
                 }
             return None 

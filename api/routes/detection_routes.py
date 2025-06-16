@@ -36,15 +36,11 @@ async def get_detection_images(request: Request, page: int = 1, limit: int = 20)
             return {"images": [], "total": 0}
         feedback_database = await database_service.get_all_feedback()
         # Query the database for detection results (paginated)
-        async with database_service.pool.acquire() as conn:
-            total_images = await conn.fetchval('SELECT COUNT(*) FROM detection_results')
-            total_pages = (total_images + limit - 1) // limit if total_images > 0 else 1
-            offset = (page - 1) * limit
-            rows = await conn.fetch('''
-                SELECT * FROM detection_results
-                ORDER BY created_at DESC
-                OFFSET $1 LIMIT $2
-            ''', offset, limit)
+        paginated_results = await database_service.get_paginated_detection_results(page, limit)
+        rows = paginated_results['results']
+        total_images = paginated_results['total']
+        total_pages = (total_images + limit - 1) // limit if total_images > 0 else 1
+        
         images = []
         for row in rows:
             image_filename = row['image_filename']
@@ -266,12 +262,7 @@ async def reprocess_detection_image(request: Request, image_filename: str):
         )
         
         # Delete existing database record for this image
-        async with database_service.pool.acquire() as conn:
-            result = await conn.execute('''
-                DELETE FROM detection_results 
-                WHERE image_filename = $1
-            ''', image_filename)
-            deleted_count = int(result.split()[-1]) if result.startswith('DELETE') else 0
+        deleted_count = await database_service.delete_detection_result_by_filename(image_filename)
         
         # Save new detection result to database
         if detection_result.detected:
@@ -394,12 +385,7 @@ async def reprocess_all_detection_images(request: Request):
                 )
                 
                 # Delete existing database record for this image
-                async with database_service.pool.acquire() as conn:
-                    result = await conn.execute('''
-                        DELETE FROM detection_results 
-                        WHERE image_filename = $1
-                    ''', image_file.name)
-                    deleted_count = int(result.split()[-1]) if result.startswith('DELETE') else 0
+                deleted_count = await database_service.delete_detection_result_by_filename(image_file.name)
                 
                 # Save new detection result to database if cats detected
                 if detection_result.detected:
