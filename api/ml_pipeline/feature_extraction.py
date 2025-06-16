@@ -3,7 +3,7 @@ Feature extraction process for cat recognition.
 """
 
 import logging
-from typing import Dict, Any, List
+from typing import Dict, Any
 import numpy as np
 from PIL import Image
 import torch
