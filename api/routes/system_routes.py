@@ -52,7 +52,7 @@ async def get_system_status(request: Request):
             "version": "2.0.0",
             "configuration_loaded": config is not None,
             "database_connected": database_service is not None,
-            "ml_model_loaded": detection_service.ml_model is not None if detection_service else False,
+            "ml_model_loaded": detection_service.ml_pipeline is not None if detection_service else False,
         }
         
         # Add configuration details if available

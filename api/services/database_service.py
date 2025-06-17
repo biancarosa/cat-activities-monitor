@@ -11,7 +11,7 @@ import subprocess
 
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy import select, delete, desc, func, distinct
+from sqlalchemy import select, delete, desc, func, distinct, update
 
 from models import ImageDetections
 from persistence.models import CatProfile, DetectionResult, Feedback
@@ -199,9 +199,16 @@ class DatabaseService:
             
             await session.commit()
     
-    async def get_all_cat_profiles(self):
+    async def get_all_cat_profiles(self, session: AsyncSession = None):
         """Get all cat profiles from database."""
-        async with self.get_session() as session:
+        session_provided = session is not None
+        if not session_provided:
+            session = self.get_session()
+        
+        try:
+            if not session_provided:
+                await session.__aenter__()
+            
             stmt = select(CatProfile).order_by(CatProfile.name)
             result = await session.execute(stmt)
             profile_rows = result.scalars().all()
@@ -220,10 +227,15 @@ class DatabaseService:
                     'total_detections': profile.total_detections,
                     'average_confidence': profile.average_confidence,
                     'preferred_locations': profile.preferred_locations or [],
-                    'bounding_box_color': profile.bounding_box_color
+                    'bounding_box_color': profile.bounding_box_color,
+                    'feature_template': profile.feature_template
                 })
             
             return profiles
+            
+        finally:
+            if not session_provided:
+                await session.__aexit__(None, None, None)
     
     async def get_cat_profile_by_name(self, cat_name: str):
         """Get specific cat profile by name."""
@@ -249,9 +261,16 @@ class DatabaseService:
                 }
             return None
     
-    async def get_cat_profile_by_uuid(self, cat_uuid: str):
+    async def get_cat_profile_by_uuid(self, cat_uuid: str, session: AsyncSession = None):
         """Get specific cat profile by UUID."""
-        async with self.get_session() as session:
+        session_provided = session is not None
+        if not session_provided:
+            session = self.get_session()
+        
+        try:
+            if not session_provided:
+                await session.__aenter__()
+            
             stmt = select(CatProfile).where(CatProfile.cat_uuid == cat_uuid)
             result = await session.execute(stmt)
             profile = result.scalar_one_or_none()
@@ -269,9 +288,14 @@ class DatabaseService:
                     'total_detections': profile.total_detections,
                     'average_confidence': profile.average_confidence,
                     'preferred_locations': profile.preferred_locations or [],
-                    'bounding_box_color': profile.bounding_box_color
+                    'bounding_box_color': profile.bounding_box_color,
+                    'feature_template': profile.feature_template
                 }
             return None
+            
+        finally:
+            if not session_provided:
+                await session.__aexit__(None, None, None)
     
     async def delete_cat_profile(self, cat_uuid: str):
         """Delete cat profile from database by UUID."""
@@ -295,6 +319,34 @@ class DatabaseService:
             stmt = select(func.count(CatProfile.cat_uuid))
             result = await session.execute(stmt)
             return result.scalar()
+    
+    async def update_cat_profile_features(self, cat_uuid: str, feature_template: list, session: AsyncSession = None):
+        """Update cat profile with feature template."""
+        session_provided = session is not None
+        if not session_provided:
+            session = self.get_session()
+        
+        try:
+            if not session_provided:
+                await session.__aenter__()
+            
+            stmt = update(CatProfile).where(
+                CatProfile.cat_uuid == cat_uuid
+            ).values(feature_template=feature_template)
+            
+            await session.execute(stmt)
+            
+            if not session_provided:
+                await session.commit()
+                
+        except Exception as e:
+            if not session_provided:
+                await session.rollback()
+            raise e
+        finally:
+            if not session_provided:
+                await session.__aexit__(None, None, None)
+    
     
     # Detection results operations
     async def save_detection_result(self, source_name: str, detection_result: ImageDetections, image_array: np.ndarray = None, image_filename: str = None):
@@ -324,7 +376,8 @@ class DatabaseService:
                     "class_name": d.class_name,
                     "confidence": d.confidence,
                     "bounding_box": d.bounding_box,
-                    "cat_uuid": getattr(d, 'cat_uuid', None)
+                    "cat_uuid": getattr(d, 'cat_uuid', None),
+                    "features": getattr(d, 'features', None)
                 } for d in detection_result.detections
             ]
             

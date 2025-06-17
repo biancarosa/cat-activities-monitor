@@ -2,7 +2,7 @@
 Detection and activity models.
 """
 
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Any
 from enum import Enum
 from pydantic import BaseModel, Field
 
@@ -53,6 +53,23 @@ class Detection(BaseModel):
         None,
         description="Deep learning feature vector for cat recognition (2048 dimensions)",
         example=[0.123, -0.456, 0.789]
+    )
+    identification_suggestion: Optional[Dict[str, Any]] = Field(
+        None,
+        description="Cat identification suggestions based on feature matching",
+        example={
+            "suggested_profile": {
+                "uuid": "550e8400-e29b-41d4-a716-446655440000",
+                "name": "Whiskers",
+                "description": "Orange tabby with white paws"
+            },
+            "confidence": 0.85,
+            "is_confident_match": True,
+            "is_new_cat": False,
+            "similarity_threshold": 0.75,
+            "suggestion_threshold": 0.60,
+            "top_matches": []
+        }
     )
 
 

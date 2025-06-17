@@ -19,8 +19,13 @@ import {
   Globe,
   Save,
   RotateCcw,
+  Brain,
+  Download,
+  Play,
+  BarChart3,
+  Zap,
 } from 'lucide-react';
-import { systemApi, cameraApi, SystemConfig, SystemStatus, CamerasResponse, HealthStatus, apiClient } from '@/lib/api';
+import { systemApi, cameraApi, trainingApi, SystemConfig, SystemStatus, CamerasResponse, HealthStatus, TrainingStatus, ModelRetrainRequest, apiClient } from '@/lib/api';
 import { configManager } from '@/lib/config';
 
 export default function SettingsPage() {
@@ -28,6 +33,7 @@ export default function SettingsPage() {
   const [systemStatus, setSystemStatus] = useState<SystemStatus | null>(null);
   const [cameras, setCameras] = useState<CamerasResponse | null>(null);
   const [healthStatus, setHealthStatus] = useState<HealthStatus | null>(null);
+  const [trainingStatus, setTrainingStatus] = useState<TrainingStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [reloading, setReloading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -38,22 +44,42 @@ export default function SettingsPage() {
   const [savingApiUrl, setSavingApiUrl] = useState(false);
   const [apiUrlError, setApiUrlError] = useState<string | null>(null);
 
+  // Training state
+  const [exporting, setExporting] = useState(false);
+  const [training, setTraining] = useState(false);
+  const [switchingModel, setSwitchingModel] = useState(false);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [trainingConfig] = useState<ModelRetrainRequest>({
+    train_yolo: true,
+    train_cat_identification: true,
+    include_clustering: true,
+    parallel_training: false,
+    yolo_config: {
+      epochs: 50,
+      batch_size: 16,
+      base_model: 'yolo11l.pt'
+    }
+  });
+
   const fetchData = async () => {
     try {
       setLoading(true);
       setError(null);
+      setSuccessMessage(null);
       
-      const [configData, statusData, camerasData, healthData] = await Promise.all([
+      const [configData, statusData, camerasData, healthData, trainingData] = await Promise.all([
         systemApi.getConfig().catch(() => null),
         systemApi.getStatus().catch(() => null),
         cameraApi.list().catch(() => null),
         systemApi.getHealth().catch(() => null),
+        trainingApi.getStatus().catch(() => null),
       ]);
 
       setSystemConfig(configData);
       setSystemStatus(statusData);
       setCameras(camerasData);
       setHealthStatus(healthData);
+      setTrainingStatus(trainingData);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch data');
     } finally {
@@ -109,9 +135,69 @@ export default function SettingsPage() {
 
   const isApiUrlChanged = tempApiUrl !== apiUrl;
 
+  const handleExportTrainingData = async () => {
+    try {
+      setExporting(true);
+      setError(null);
+      setSuccessMessage(null);
+      const result = await trainingApi.exportData();
+      setSuccessMessage(`Training data exported successfully! ${result.images_count} images with ${result.total_annotations} annotations.`);
+      await fetchData(); // Refresh training status
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to export training data');
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const handleStartTraining = async () => {
+    try {
+      setTraining(true);
+      setError(null);
+      setSuccessMessage(null);
+      const result = await trainingApi.retrain(trainingConfig);
+      if (result.success) {
+        const successfulTrainers = result.successful_trainers.join(', ');
+        setSuccessMessage(`Training completed successfully! Trained: ${successfulTrainers}. Training time: ${result.total_training_time.toFixed(1)}s`);
+      } else {
+        setError(result.error_message || 'Training failed');
+      }
+      await fetchData(); // Refresh training status
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to start training');
+    } finally {
+      setTraining(false);
+    }
+  };
+
+  const handleSwitchModel = async (modelFilename: string) => {
+    try {
+      setSwitchingModel(true);
+      setError(null);
+      setSuccessMessage(null);
+      const result = await trainingApi.switchModel(modelFilename);
+      setSuccessMessage(`Model switched successfully to ${modelFilename}`);
+      await fetchData(); // Refresh all data to show new current model
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to switch model');
+    } finally {
+      setSwitchingModel(false);
+    }
+  };
+
   useEffect(() => {
     fetchData();
   }, []);
+
+  // Auto-dismiss success messages after 5 seconds
+  useEffect(() => {
+    if (successMessage) {
+      const timer = setTimeout(() => {
+        setSuccessMessage(null);
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [successMessage]);
 
   const getStatusIcon = (status: boolean | string) => {
     if (typeof status === 'boolean') {
@@ -188,6 +274,17 @@ export default function SettingsPage() {
               <div className="flex items-center space-x-2 text-destructive">
                 <XCircle className="h-5 w-5" />
                 <span>{error}</span>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {successMessage && (
+          <Card className="mb-6 border-green-500/50 bg-green-500/10">
+            <CardContent className="pt-6">
+              <div className="flex items-center space-x-2 text-green-600 dark:text-green-400">
+                <CheckCircle className="h-5 w-5" />
+                <span>{successMessage}</span>
               </div>
             </CardContent>
           </Card>
@@ -426,6 +523,160 @@ export default function SettingsPage() {
                       <p className="font-medium">{systemConfig.global_.timeout_seconds}s</p>
                     </div>
                   </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* AI Training Status */}
+          {trainingStatus && (
+            <Card className="lg:col-span-2">
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <Brain className="h-5 w-5" />
+                  <span>AI Training Status</span>
+                </CardTitle>
+                <CardDescription>Machine learning model training and management</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* Training Statistics */}
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <div className="text-center p-4 bg-muted/30 rounded-lg">
+                    <div className="text-2xl font-bold text-foreground">{trainingStatus.total_feedback}</div>
+                    <div className="text-sm text-muted-foreground">Feedback Entries</div>
+                  </div>
+                  <div className="text-center p-4 bg-muted/30 rounded-lg">
+                    <div className="text-2xl font-bold text-foreground">{trainingStatus.total_annotations}</div>
+                    <div className="text-sm text-muted-foreground">Annotations</div>
+                  </div>
+                  <div className="text-center p-4 bg-muted/30 rounded-lg">
+                    <div className="text-2xl font-bold text-foreground">{trainingStatus.unique_cats}</div>
+                    <div className="text-sm text-muted-foreground">Unique Cats</div>
+                  </div>
+                  <div className="text-center p-4 bg-muted/30 rounded-lg">
+                    <div className="text-2xl font-bold text-foreground">{trainingStatus.cat_profiles}</div>
+                    <div className="text-sm text-muted-foreground">Cat Profiles</div>
+                  </div>
+                </div>
+
+                {/* Training Readiness */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium">Overall Training</span>
+                      <div className="flex items-center space-x-2">
+                        {getStatusIcon(trainingStatus.ready_for_training)}
+                        {getStatusBadge(trainingStatus.ready_for_training ? 'Ready' : 'Not Ready')}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium">YOLO Training</span>
+                      <div className="flex items-center space-x-2">
+                        {getStatusIcon(trainingStatus.yolo_training_ready)}
+                        {getStatusBadge(trainingStatus.yolo_training_ready ? 'Ready' : 'Not Ready')}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium">Cat ID Training</span>
+                      <div className="flex items-center space-x-2">
+                        {getStatusIcon(trainingStatus.cat_id_training_ready)}
+                        {getStatusBadge(trainingStatus.cat_id_training_ready ? 'Ready' : 'Not Ready')}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Training Actions */}
+                <div className="flex flex-wrap gap-3 pt-4 border-t">
+                  <Button 
+                    onClick={handleExportTrainingData}
+                    disabled={exporting || !trainingStatus.ready_for_training}
+                    variant="outline"
+                  >
+                    <Download className="h-4 w-4 mr-2" />
+                    {exporting ? 'Exporting...' : 'Export Training Data'}
+                  </Button>
+                  <Button 
+                    onClick={handleStartTraining}
+                    disabled={training || !trainingStatus.ready_for_training}
+                  >
+                    <Play className="h-4 w-4 mr-2" />
+                    {training ? 'Training...' : 'Start Training'}
+                  </Button>
+                </div>
+
+                {/* Requirements */}
+                {!trainingStatus.ready_for_training && (
+                  <div className="mt-4 p-4 bg-orange-500/10 border border-orange-500/20 rounded-lg">
+                    <h4 className="font-medium text-orange-700 dark:text-orange-300 mb-2">Training Requirements</h4>
+                    <div className="text-sm text-orange-600 dark:text-orange-400 space-y-1">
+                      <div>• YOLO: ≥{trainingStatus.requirements.yolo_min_feedback} feedback, ≥{trainingStatus.requirements.yolo_min_annotations} annotations</div>
+                      <div>• Cat ID: ≥{trainingStatus.requirements.cat_id_min_cats} cats, ≥{trainingStatus.requirements.cat_id_min_profiles} profiles, ≥{trainingStatus.requirements.cat_id_min_annotations} annotations</div>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Available Models */}
+          {trainingStatus && trainingStatus.available_models.length > 0 && (
+            <Card className="lg:col-span-2">
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <BarChart3 className="h-5 w-5" />
+                  <span>Available Models</span>
+                </CardTitle>
+                <CardDescription>Manage and switch between trained models</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {trainingStatus.available_models.map((model, index) => (
+                    <Card key={index} className={model.is_current ? 'border-primary' : ''}>
+                      <CardContent className="pt-4">
+                        <div className="flex items-center justify-between mb-2">
+                          <h4 className="font-medium">{model.name}</h4>
+                          <div className="flex items-center space-x-2">
+                            {model.is_current && <Badge variant="default">Current</Badge>}
+                            {model.is_custom && <Badge variant="secondary">Custom</Badge>}
+                          </div>
+                        </div>
+                        <div className="space-y-2 text-sm text-muted-foreground">
+                          <div>
+                            <span className="font-medium">Size:</span> {model.size_mb === 'Download' ? 'Download' : `${model.size_mb} MB`}
+                          </div>
+                          {model.created && (
+                            <div>
+                              <span className="font-medium">Created:</span> {new Date(model.created).toLocaleDateString()}
+                            </div>
+                          )}
+                          {model.description && (
+                            <div>
+                              <span className="font-medium">Description:</span> {model.description}
+                            </div>
+                          )}
+                        </div>
+                        {!model.is_current && model.size_mb !== 'Download' && (
+                          <div className="mt-3">
+                            <Button 
+                              onClick={() => handleSwitchModel(model.filename)}
+                              disabled={switchingModel}
+                              size="sm"
+                              variant="outline"
+                              className="w-full"
+                            >
+                              <Zap className="h-4 w-4 mr-2" />
+                              {switchingModel ? 'Switching...' : 'Switch to this Model'}
+                            </Button>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  ))}
                 </div>
               </CardContent>
             </Card>

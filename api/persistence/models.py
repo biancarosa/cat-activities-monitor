@@ -36,6 +36,7 @@ class CatProfile(Base):
     average_confidence = Column(Float, server_default='0.0')
     preferred_locations = Column(JSON, nullable=True)
     bounding_box_color = Column(Text, nullable=False, server_default='#FFA500')
+    feature_template = Column(JSON, nullable=True)
     updated_at = Column(TIMESTAMP, server_default=text('CURRENT_TIMESTAMP'))
     
     def __repr__(self):

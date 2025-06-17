@@ -117,7 +117,8 @@ export default function FeedbackModal({
             cat_name: annotation.catName || undefined,
             activity_feedback: annotation.activityFeedback || undefined,
             correct_activity: annotation.activity !== 'unknown' ? annotation.activity : undefined,
-            activity_confidence: annotation.confidence || 0.8
+            activity_confidence: annotation.confidence || 0.8,
+            cat_profile_uuid: annotation.catProfileUuid || undefined
           });
         }
       });

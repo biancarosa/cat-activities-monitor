@@ -17,6 +17,7 @@ from models import (
     YOLOConfig, ChangeDetectionConfig
 )
 from services import DatabaseService
+from services.cat_identification_service import CatIdentificationService
 from ml_pipeline import MLDetectionPipeline, YOLODetectionProcess, FeatureExtractionProcess
 from utils import BOUNDING_BOX_COLORS
 logger = logging.getLogger(__name__)
@@ -27,10 +28,11 @@ class DetectionService:
     def __init__(self, database_service: DatabaseService):
         self.ml_pipeline: Optional[MLDetectionPipeline] = None
         self.previous_detections: Dict[str, Dict] = {}
+        self.database_service = database_service
+        self.cat_identification_service = CatIdentificationService(database_service)
         
         # Predefined bright colors for bounding boxes
         self.box_colors = BOUNDING_BOX_COLORS
-        self.database_service = database_service
     
     def _get_cat_color(self, cat_uuid: Optional[str] = None, cat_index: int = 0) -> str:
         """Get a color for a cat based on its index."""
@@ -165,6 +167,10 @@ class DetectionService:
             # Run ML pipeline (YOLO detection + feature extraction)
             detection_result = await self.ml_pipeline.process_image(image_array)
             
+            # Add cat identification suggestions if features are available
+            if detection_result.detections:
+                await self._add_cat_identification_suggestions(detection_result)
+            
             # Check if we should save the image (change detection)
             should_save = True
             save_reason = "change_detection_disabled"
@@ -283,4 +289,62 @@ class DetectionService:
             logger.info(f"💾 Saved detection image: {filepath} (reason: {save_reason})")
         except Exception as e:
             logger.error(f"Failed to save detection image: {e}")
+    
+    async def _add_cat_identification_suggestions(self, detection_result: ImageDetections) -> None:
+        """
+        Add cat identification suggestions to detection results using feature matching.
+        
+        Args:
+            detection_result: Detection result to enhance with cat identification
+        """
+        try:
+            # Only process detections that have features
+            detections_with_features = [
+                d for d in detection_result.detections 
+                if d.features and len(d.features) == 2048
+            ]
+            
+            if not detections_with_features:
+                logger.debug("No detections with features found for cat identification")
+                return
+            
+            # Get cat identification suggestions
+            async with self.database_service.get_session() as session:
+                identification_results = await self.cat_identification_service.identify_cats_in_detections(
+                    detections_with_features, session
+                )
+                
+                
+                # Add identification suggestions to detection objects
+                for i, result in enumerate(identification_results):
+                    if i < len(detections_with_features) and result is not None:
+                        detection = detections_with_features[i]
+                        
+                        # Add identification metadata to detection
+                        if not hasattr(detection, 'identification_suggestion'):
+                            detection.identification_suggestion = {}
+                        
+                        detection.identification_suggestion = {
+                            'suggested_profile': result.get('suggested_profile'),
+                            'confidence': result.get('confidence', 0.0),
+                            'is_confident_match': result.get('is_confident_match', False),
+                            'is_new_cat': result.get('is_new_cat', True),
+                            'similarity_threshold': result.get('similarity_threshold'),
+                            'suggestion_threshold': result.get('suggestion_threshold'),
+                            'top_matches': result.get('all_matches', [])[:3]  # Top 3 matches
+                        }
+                        
+                        suggested_profile = result.get('suggested_profile')
+                        profile_name = suggested_profile.get('name', 'New cat') if suggested_profile else 'New cat'
+                        logger.debug(
+                            f"Cat identification: Detection {i} -> "
+                            f"{profile_name} "
+                            f"(confidence: {result.get('confidence', 0.0):.3f})"
+                        )
+                    elif result is None:
+                        logger.warning(f"Got None result for detection {i} in identification results")
+            
+        except Exception as e:
+            logger.error(f"Failed to add cat identification suggestions: {e}")
+            # Don't let identification errors break the detection pipeline
     

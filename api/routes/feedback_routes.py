@@ -89,7 +89,7 @@ async def submit_feedback(request: Request, feedback: ImageFeedback):
                         if activity_value not in favorite_activities:
                             favorite_activities.append(activity_value)
                             profile['favorite_activities'] = favorite_activities
-                    await database_service.save_cat_profile(profile['cat_uuid'], profile)
+                    await database_service.save_cat_profile(profile)
                     logger.info(f"🐱 Updated cat profile: {profile.get('name')} (Total detections: {profile['total_detections']})")
         
         logger.info(f"📝 Feedback submitted for {feedback.image_filename}: {feedback.feedback_type}")

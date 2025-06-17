@@ -332,6 +332,13 @@ class ApiClient {
     return this.request<TrainingStatus>('/training/status');
   }
 
+  async suggestCatIdentifications(features: number[][]): Promise<CatIdentificationSuggestion[]> {
+    return this.request('/training/cat-identification/suggest', {
+      method: 'POST',
+      body: JSON.stringify({ features }),
+    });
+  }
+
   async switchModel(model: string): Promise<{ message: string; current_model: string }> {
     return this.request('/training/switch-model', {
       method: 'POST',
@@ -413,6 +420,7 @@ export interface FeedbackAnnotation {
   activity_feedback?: string;
   correct_activity?: string;
   activity_confidence?: number;
+  cat_profile_uuid?: string;
 }
 
 export interface ImageFeedback {
@@ -461,51 +469,91 @@ export interface FeedbackListResponse {
 export interface TrainingDataExportResult {
   message: string;
   export_path: string;
-  images_exported: number;
-  labels_exported: number;
+  images_count: number;
+  labels_count: number;
   total_annotations: number;
   export_timestamp: string;
-  classes: Record<number, string>;
 }
 
 export interface ModelRetrainRequest {
-  custom_model_name?: string;
-  description?: string;
+  train_yolo?: boolean;
+  train_cat_identification?: boolean;
+  include_clustering?: boolean;
+  parallel_training?: boolean;
+  yolo_config?: {
+    epochs?: number;
+    batch_size?: number;
+    base_model?: string;
+  };
 }
 
 export interface ModelRetrainResult {
-  message: string;
-  retrain_job_id: string;
-  model_name: string;
-  status: string;
-  estimated_duration_minutes?: number;
+  success: boolean;
+  total_training_time: number;
+  successful_trainers: string[];
+  training_results: Record<string, {
+    success: boolean;
+    model_path?: string;
+    metrics?: Record<string, unknown>;
+    training_time?: number;
+    error_message?: string;
+  }>;
   training_data_stats: {
-    total_images: number;
-    total_annotations: number;
-    classes: Record<number, string>;
+    total_samples: number;
+    feature_samples: number;
+    unique_labels: number;
   };
+  error_message?: string;
 }
 
 export interface TrainingStatus {
-  status: string;
+  ready_for_training: boolean;
+  yolo_training_ready: boolean;
+  cat_id_training_ready: boolean;
+  total_feedback: number;
+  total_annotations: number;
+  unique_cats: number;
+  cat_profiles: number;
   available_models: Array<{
     name: string;
-    path: string;
-    created: string;
+    filename: string;
+    model_name: string;
+    size_mb: number | string;
+    created: string | null;
+    is_custom: boolean;
+    is_current?: boolean;
     description?: string;
-    is_current: boolean;
+    metadata?: Record<string, unknown>;
   }>;
-  current_job?: {
-    job_id: string;
-    status: string;
-    progress?: number;
-    estimated_completion?: string;
+  requirements: {
+    yolo_min_feedback: number;
+    yolo_min_annotations: number;
+    cat_id_min_cats: number;
+    cat_id_min_profiles: number;
+    cat_id_min_annotations: number;
   };
-  stats: {
-    total_feedback_entries: number;
-    total_annotations: number;
-    named_cats: number;
+}
+
+export interface CatIdentificationSuggestion {
+  detection_index: number;
+  suggested_profile?: {
+    uuid: string;
+    name: string;
+    description?: string;
   };
+  confidence: number;
+  is_confident_match: boolean;
+  is_new_cat: boolean;
+  similarity_threshold: number;
+  suggestion_threshold: number;
+  top_matches: Array<{
+    profile: {
+      uuid: string;
+      name: string;
+      description?: string;
+    };
+    similarity: number;
+  }>;
 }
 
 export const detectionApi = {
@@ -527,6 +575,7 @@ export const trainingApi = {
   retrain: (request?: ModelRetrainRequest) => apiClient.retrainModel(request),
   getStatus: () => apiClient.getTrainingStatus(),
   switchModel: (model: string) => apiClient.switchModel(model),
+  suggestCatIdentifications: (features: number[][]) => apiClient.suggestCatIdentifications(features),
 };
 
 // Cat Profile interfaces
