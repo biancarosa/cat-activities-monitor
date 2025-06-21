@@ -219,8 +219,7 @@ export default function ImageGallery({ className = '', onStatsUpdate }: ImageGal
     if (!image.detections) return [];
     
     return image.detections
-      .filter(detection => detection.cat_name)
-      .map(detection => detection.cat_name!)
+      .map(detection => detection.cat_name || "unidentified")
       .filter((name, index, arr) => arr.indexOf(name) === index); // Remove duplicates
   };
 
@@ -380,7 +379,15 @@ export default function ImageGallery({ className = '', onStatsUpdate }: ImageGal
                         </Badge>
                       )}
                       {getCatNames(image).map((catName, index) => (
-                        <Badge key={index} variant="secondary" className="text-xs bg-green-100 text-green-800 border-green-300">
+                        <Badge 
+                          key={index} 
+                          variant="secondary" 
+                          className={`text-xs ${
+                            catName === "unidentified" 
+                              ? "bg-gray-100 text-gray-700 border-gray-300" 
+                              : "bg-green-100 text-green-800 border-green-300"
+                          }`}
+                        >
                           🐱 {catName}
                         </Badge>
                       ))}
@@ -409,9 +416,9 @@ export default function ImageGallery({ className = '', onStatsUpdate }: ImageGal
                           <span className="font-medium">Size:</span>
                           <span>{image.file_size_mb}MB</span>
                         </div>
-                        {getCatNames(image).length > 0 && (
+                        {image.detections && image.detections.length > 0 && (
                           <div className="flex items-center justify-between">
-                            <span className="font-medium">Identified:</span>
+                            <span className="font-medium">Cats:</span>
                             <span className="truncate ml-2">
                               {getCatNames(image).join(', ')}
                             </span>
