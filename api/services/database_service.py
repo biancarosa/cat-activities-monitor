@@ -377,6 +377,7 @@ class DatabaseService:
                     "confidence": d.confidence,
                     "bounding_box": d.bounding_box,
                     "cat_uuid": getattr(d, 'cat_uuid', None),
+                    "cat_name": getattr(d, 'cat_name', None),
                     "features": getattr(d, 'features', None)
                 } for d in detection_result.detections
             ]
