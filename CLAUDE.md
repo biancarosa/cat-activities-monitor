@@ -71,7 +71,9 @@ cat-activities-monitor/
 │   ├── src/components/         # React components
 │   │   └── ui/                 # shadcn/ui components
 │   └── src/lib/                # Utilities and API client
-├── DEBUG_CAT_IDENTIFICATION.md # Debug guide for cat identification
+├── docs/
+│   ├── DEBUG_CAT_IDENTIFICATION.md # Debug guide for cat identification
+│   └── ...
 └── docker-compose.yml          # Development environment
 ```
 
