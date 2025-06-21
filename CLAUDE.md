@@ -62,9 +62,8 @@ cat-activities-monitor/
 │   ├── routes/                 # API route handlers
 │   ├── services/               # Business logic services
 │   ├── scripts/                # Debug and utility scripts
-│   ├── ml_models/              # YOLO model files
+│   ├── ml_models/              # ML models, training data and other ML related files
 │   ├── detections/             # Generated detection images
-│   ├── ml_models/training_data/ # ML training data
 │   ├── config.yaml             # Application configuration
 │   └── main.py                 # FastAPI application entry
 ├── frontend/                   # Next.js frontend
@@ -129,28 +128,7 @@ cat-activities-monitor/
 
 ## Configuration
 
-### Camera Setup
-Copy `api/config.example.yaml` to `api/config.yaml` and configure your camera URLs:
-
-```yaml
-images:
-  - name: "living-room"
-    url: "http://YOUR_CAMERA_IP:PORT/snapshot.jpg"
-    interval_seconds: 30
-    enabled: true
-```
-
-### ML Model Configuration
-The YOLO model settings are optimized for multi-cat detection:
-
-```yaml
-global:
-  ml_model_config:
-    model: "ml_models/yolo11l.pt"
-    confidence_threshold: 0.5   # Balanced threshold for reliable detection
-    iou_threshold: 0.1          # Low IoU for overlapping detections
-    target_classes: [15, 16]    # Cats and dogs (YOLO sometimes confuses them)
-```
+There is an `api/config.yaml` with configuration of the cameras and the YOLO model.
 
 ## Per-Cat Feedback System
 
