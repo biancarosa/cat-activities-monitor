@@ -124,7 +124,10 @@ class CatIdentificationDebugger:
                     print(f"   📅 Timestamp: {row[4]}")
                     
                     # Parse and display detections
-                    detections = json.loads(row[3]) if row[3] else []
+                    if isinstance(row[3], list):
+                        detections = row[3]  # Already parsed
+                    else:
+                        detections = json.loads(row[3]) if row[3] else []
                     print(f"   🔍 Detections: {len(detections)}")
                     
                     for i, detection in enumerate(detections):
