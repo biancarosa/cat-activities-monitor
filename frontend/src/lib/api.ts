@@ -71,6 +71,19 @@ export interface DetectionImage {
     class_name: string;
     confidence: number;
     bounding_box: BoundingBox;
+    cat_uuid?: string;
+    cat_name?: string;
+    features?: number[];
+    identification_suggestion?: {
+      suggested_profile?: {
+        uuid: string;
+        name: string;
+        description?: string;
+      };
+      confidence: number;
+      is_confident_match: boolean;
+      is_new_cat: boolean;
+    };
   }>;
   annotation_summary: string[];
 }

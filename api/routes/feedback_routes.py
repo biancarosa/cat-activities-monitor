@@ -5,11 +5,14 @@ Feedback routes.
 import hashlib
 import logging
 from pathlib import Path
+import numpy as np
+from PIL import Image
 
 from fastapi import APIRouter, Request, HTTPException
 
 from models import ImageFeedback
 from utils import convert_datetime_fields_to_strings
+from ml_pipeline.feature_extraction import FeatureExtractionProcess
 
 logger = logging.getLogger(__name__)
 
@@ -62,8 +65,27 @@ async def submit_feedback(request: Request, feedback: ImageFeedback):
         # Save feedback to database
         await database_service.save_feedback(feedback_id, feedback_data)
         
+        # Initialize feature extraction for cat profile updates
+        feature_extractor = None
+        if any(ann.cat_profile_uuid for ann in feedback.user_annotations):
+            try:
+                feature_extractor = FeatureExtractionProcess()
+                await feature_extractor.initialize()
+                logger.info("Feature extractor initialized for profile updates")
+            except Exception as e:
+                logger.warning(f"Could not initialize feature extractor: {e}")
+        
+        # Load the detection image for feature extraction
+        detection_image = None
+        if feature_extractor:
+            try:
+                detection_image = np.array(Image.open(actual_path))
+                logger.info(f"Loaded detection image for feature extraction: {actual_path}")
+            except Exception as e:
+                logger.warning(f"Could not load detection image: {e}")
+        
         # Process cat naming and profile updates
-        for annotation in feedback.user_annotations:
+        for i, annotation in enumerate(feedback.user_annotations):
             # Only update profile if cat_profile_uuid is provided
             if annotation.cat_profile_uuid:
                 existing_profile = await database_service.get_cat_profile_by_uuid(annotation.cat_profile_uuid)
@@ -89,13 +111,66 @@ async def submit_feedback(request: Request, feedback: ImageFeedback):
                         if activity_value not in favorite_activities:
                             favorite_activities.append(activity_value)
                             profile['favorite_activities'] = favorite_activities
+                    
+                    # Extract and update feature template if detection image and bounding box available
+                    if (feature_extractor and detection_image is not None and 
+                        i < len(feedback.original_detections)):
+                        try:
+                            detection = feedback.original_detections[i]
+                            if hasattr(detection, 'bounding_box') and detection.bounding_box:
+                                bbox = detection.bounding_box
+                                
+                                # Crop cat region from detection image
+                                x1, y1 = int(bbox.get('x1', 0)), int(bbox.get('y1', 0))
+                                x2, y2 = int(bbox.get('x2', detection_image.shape[1])), int(bbox.get('y2', detection_image.shape[0]))
+                                
+                                # Ensure valid bounding box
+                                if x2 > x1 and y2 > y1 and x1 >= 0 and y1 >= 0:
+                                    cat_crop = detection_image[y1:y2, x1:x2]
+                                    
+                                    # Extract features
+                                    features = await feature_extractor._extract_features(cat_crop)
+                                    
+                                    if features is not None and len(features) > 0:
+                                        # Update cat profile with features using ensemble averaging
+                                        cat_identification_service = request.app.state.cat_identification_service
+                                        if cat_identification_service:
+                                            async with database_service.get_session() as session:
+                                                await cat_identification_service.update_cat_profile_features(
+                                                    annotation.cat_profile_uuid,
+                                                    features.tolist(),
+                                                    session
+                                                )
+                                            logger.info(
+                                                f"🧠 Updated feature template for {profile.get('name')} "
+                                                f"with {len(features)}-dimensional features"
+                                            )
+                                        else:
+                                            logger.warning("Cat identification service not available for feature updates")
+                                    else:
+                                        logger.warning(f"Failed to extract features for {profile.get('name')}")
+                                else:
+                                    logger.warning(f"Invalid bounding box for {profile.get('name')}: {bbox}")
+                            else:
+                                logger.warning(f"No bounding box available for detection {i}")
+                        except Exception as e:
+                            logger.error(f"Error extracting features for {profile.get('name')}: {e}")
+                    
                     await database_service.save_cat_profile(profile)
                     logger.info(f"🐱 Updated cat profile: {profile.get('name')} (Total detections: {profile['total_detections']})")
+        
+        # Cleanup feature extractor
+        if feature_extractor:
+            try:
+                await feature_extractor.cleanup()
+            except Exception as e:
+                logger.warning(f"Error cleaning up feature extractor: {e}")
         
         logger.info(f"📝 Feedback submitted for {feedback.image_filename}: {feedback.feedback_type}")
         logger.info(f"   Original detections: {len(feedback.original_detections)}")
         logger.info(f"   User annotations: {len(feedback.user_annotations)}")
-        # logger.info(f"   Named cats: {[ann.cat_profile_uuid for ann in feedback.user_annotations if ann.cat_profile_uuid]}")
+        profiles_with_features = sum(1 for ann in feedback.user_annotations if ann.cat_profile_uuid)
+        logger.info(f"   Cat profiles updated with features: {profiles_with_features}")
         logger.info(f"   Activity feedback: {[ann.activity_feedback for ann in feedback.user_annotations if ann.activity_feedback]}")
         logger.info(f"   Original path: {image_path}")
         logger.info(f"   Resolved path: {actual_path}")

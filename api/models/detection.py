@@ -49,6 +49,11 @@ class Detection(BaseModel):
         description="Unique identifier for this cat detection",
         example="550e8400-e29b-41d4-a716-446655440000"
     )
+    cat_name: Optional[str] = Field(
+        None,
+        description="Identified name of the cat (if recognized)",
+        example="Chico"
+    )
     features: Optional[List[float]] = Field(
         None,
         description="Deep learning feature vector for cat recognition (2048 dimensions)",

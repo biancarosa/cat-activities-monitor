@@ -588,7 +588,7 @@ async def _extract_features_from_detection(
             if (features and len(features) == 2048 and 
                 abs(detection_bbox.get('x1', 0) - annotation_bbox.get('x1', 0)) < 5 and
                 abs(detection_bbox.get('y1', 0) - annotation_bbox.get('y1', 0)) < 5):
-                logger.debug(f"Found matching features in original detection")
+                logger.debug("Found matching features in original detection")
                 return features
         
         # If no matching features found, re-extract from image
@@ -612,7 +612,6 @@ async def _extract_features_from_image_crop(bbox: Dict[str, Any], image_path: st
     """
     try:
         from PIL import Image
-        import numpy as np
         from pathlib import Path
         from ml_pipeline.feature_extraction import FeatureExtractionProcess
         

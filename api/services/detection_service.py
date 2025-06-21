@@ -334,12 +334,34 @@ class DetectionService:
                             'top_matches': result.get('all_matches', [])[:3]  # Top 3 matches
                         }
                         
+                        # 🎯 CRITICAL: Replace random UUID with profile UUID for confident matches
+                        if result.get('is_confident_match', False):
+                            suggested_profile = result.get('suggested_profile')
+                            if suggested_profile and 'uuid' in suggested_profile:
+                                old_uuid = detection.cat_uuid
+                                detection.cat_uuid = suggested_profile['uuid']
+                                detection.cat_name = suggested_profile['name']  # Add cat name to detection
+                                logger.info(
+                                    f"🔄 UUID & Name assigned: {suggested_profile['name']} -> "
+                                    f"{detection.cat_uuid} (was: {old_uuid})"
+                                )
+                        else:
+                            # For suggestions (below confidence threshold), still add name if available
+                            suggested_profile = result.get('suggested_profile')
+                            if suggested_profile and not result.get('is_new_cat', True):
+                                detection.cat_name = f"{suggested_profile['name']}?"  # Question mark for uncertainty
+                        
                         suggested_profile = result.get('suggested_profile')
                         profile_name = suggested_profile.get('name', 'New cat') if suggested_profile else 'New cat'
+                        confidence_info = f"(confidence: {result.get('confidence', 0.0):.3f}"
+                        if result.get('model_enhanced', False):
+                            confidence_info += f", enhanced: {result.get('enhanced_similarity', 0.0):.3f}"
+                        confidence_info += ")"
+                        
                         logger.debug(
                             f"Cat identification: Detection {i} -> "
                             f"{profile_name} "
-                            f"(confidence: {result.get('confidence', 0.0):.3f})"
+                            f"{confidence_info}"
                         )
                     elif result is None:
                         logger.warning(f"Got None result for detection {i} in identification results")

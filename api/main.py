@@ -19,6 +19,7 @@ from services import (
     ImageService,
     TrainingService
 )
+from services.cat_identification_service import CatIdentificationService
 
 # Import route modules
 from routes import (
@@ -119,6 +120,16 @@ async def lifespan(app: FastAPI):
         await database_service.init_database()
         logger.info("💾 Database initialized")
         
+        # Initialize cat identification service
+        cat_identification_service = CatIdentificationService(database_service)
+        
+        # Try to load trained model for cat identification
+        model_loaded = await cat_identification_service.load_trained_model()
+        if model_loaded:
+            logger.info("🧠 Cat identification model loaded successfully")
+        else:
+            logger.info("ℹ️ No trained cat identification model found - using similarity matching only")
+        
         # TrainingService depends on DatabaseService  
         training_service = TrainingService(database_service)
         
@@ -139,6 +150,7 @@ async def lifespan(app: FastAPI):
         app.state.detection_service = detection_service
         app.state.image_service = image_service
         app.state.training_service = training_service
+        app.state.cat_identification_service = cat_identification_service
         
         # Start background image fetching task
         background_task = asyncio.create_task(background_image_fetcher(app))

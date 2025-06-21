@@ -280,7 +280,7 @@ async def reprocess_detection_image(request: Request, image_filename: str):
                 image_array, 
                 image_filename
             )
-            logger.info(f"✅ Reprocessed and saved detection for {image_filename}: {detection_result.count} cats detected")
+            logger.info(f"✅ Reprocessed and saved detection for {image_filename}: {detection_result.cats_count} cats detected")
         else:
             logger.info(f"ℹ️ Reprocessed {image_filename}: No cats detected")
         
@@ -292,7 +292,7 @@ async def reprocess_detection_image(request: Request, image_filename: str):
             "previous_record_deleted": deleted_count > 0,
             "detection_result": {
                 "detected": detection_result.detected,
-                "count": detection_result.count,
+                "count": detection_result.cats_count,
                 "confidence": round(detection_result.confidence, 3) if detection_result.confidence > 0 else None,
                 "detections": [
                     {
@@ -302,25 +302,9 @@ async def reprocess_detection_image(request: Request, image_filename: str):
                         "bounding_box": d.bounding_box
                     } for d in detection_result.detections
                 ],
-                "activities": [
-                    {
-                        "activity": a.activity.value,
-                        "confidence": round(a.confidence, 3),
-                        "reasoning": a.reasoning,
-                        "cat_index": a.cat_index
-                    } for a in detection_result.activities
-                ],
-                "activities_by_cat": {
-                    str(cat_idx): [
-                        {
-                            "activity": act.activity.value,
-                            "confidence": round(act.confidence, 3),
-                            "reasoning": act.reasoning,
-                            "cat_index": act.cat_index
-                        } for act in activities
-                    ] for cat_idx, activities in detection_result.cat_activities.items()
-                } if detection_result.cat_activities else {},
-                "primary_activity": detection_result.primary_activity.value if detection_result.primary_activity else None
+                "activities": [],  # Activity detection not implemented in current model
+                "activities_by_cat": {},  # Activity detection not implemented in current model
+                "primary_activity": None  # Activity detection not implemented in current model
             },
             "reprocess_timestamp": datetime.now().isoformat()
         }
@@ -409,7 +393,7 @@ async def reprocess_all_detection_images(request: Request):
                     "source": source_name,
                     "success": True,
                     "detected": detection_result.detected,
-                    "count": detection_result.count,
+                    "count": detection_result.cats_count,
                     "confidence": round(detection_result.confidence, 3) if detection_result.confidence > 0 else None,
                     "previous_record_deleted": deleted_count > 0
                 })

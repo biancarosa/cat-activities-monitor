@@ -215,6 +215,15 @@ export default function ImageGallery({ className = '', onStatsUpdate }: ImageGal
     }
   };
 
+  const getCatNames = (image: DetectionImage): string[] => {
+    if (!image.detections) return [];
+    
+    return image.detections
+      .filter(detection => detection.cat_name)
+      .map(detection => detection.cat_name!)
+      .filter((name, index, arr) => arr.indexOf(name) === index); // Remove duplicates
+  };
+
   if (loading) {
     return (
       <Card className={className}>
@@ -370,6 +379,11 @@ export default function ImageGallery({ className = '', onStatsUpdate }: ImageGal
                           <span>{image.cat_count} cat{image.cat_count > 1 ? 's' : ''}</span>
                         </Badge>
                       )}
+                      {getCatNames(image).map((catName, index) => (
+                        <Badge key={index} variant="secondary" className="text-xs bg-green-100 text-green-800 border-green-300">
+                          🐱 {catName}
+                        </Badge>
+                      ))}
                     </div>
                     
                     <div className="absolute top-2 right-2">
@@ -395,6 +409,14 @@ export default function ImageGallery({ className = '', onStatsUpdate }: ImageGal
                           <span className="font-medium">Size:</span>
                           <span>{image.file_size_mb}MB</span>
                         </div>
+                        {getCatNames(image).length > 0 && (
+                          <div className="flex items-center justify-between">
+                            <span className="font-medium">Identified:</span>
+                            <span className="truncate ml-2">
+                              {getCatNames(image).join(', ')}
+                            </span>
+                          </div>
+                        )}
                       </div>
                       
                       <div className="flex items-center justify-between pt-2">
