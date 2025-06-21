@@ -59,6 +59,9 @@ async def get_detection_images(request: Request, page: int = 1, limit: int = 20)
             cat_count = row['cats_count']
             max_confidence = row['confidence']
             detections = row['detections'] if isinstance(row['detections'], list) else (json.loads(row['detections']) if row['detections'] else [])
+            # Remove features field from detections for API response (not needed in frontend)
+            for detection in detections:
+                detection.pop('features', None)
             annotation_summary = []
             if image_feedback:
                 original_detections = image_feedback.get("original_detections", [])

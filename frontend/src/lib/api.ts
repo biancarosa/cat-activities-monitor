@@ -73,7 +73,6 @@ export interface DetectionImage {
     bounding_box: BoundingBox;
     cat_uuid?: string;
     cat_name?: string;
-    features?: number[];
     identification_suggestion?: {
       suggested_profile?: {
         uuid: string;
