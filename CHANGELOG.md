@@ -2,6 +2,47 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.2.1](https://github.com/biancarosa/cat-activities-monitor/compare/v0.2.0...v0.2.1) (2025-06-21)
+
+
+### Features
+
+* add cat identification debug script and fix feedback processing ([e619ed3](https://github.com/biancarosa/cat-activities-monitor/commit/e619ed3e8a8a5f18e4d35f160599301c6d3e922c))
+* add cat identification training ([89ae78f](https://github.com/biancarosa/cat-activities-monitor/commit/89ae78f3e15d01a10a65ec8ec1c49da524d8bc3b))
+* add class correction capability to YOLO feedback system ([67c2d38](https://github.com/biancarosa/cat-activities-monitor/commit/67c2d388733e4e00f7fb8f19e1dd1bb114a936df))
+* **api:** migrate database service to SQLAlchemy ORM ([cba0394](https://github.com/biancarosa/cat-activities-monitor/commit/cba0394ce1014ea26a53c2f59e72fce489af8513))
+* display unidentified cats in UI ([5fa916c](https://github.com/biancarosa/cat-activities-monitor/commit/5fa916c5428430fd36b09844e648203c38e3ba93))
+* **ml:** feature extraction logs ([43d2a3a](https://github.com/biancarosa/cat-activities-monitor/commit/43d2a3aec4405fe38171a7a0d1d1ae7c4ffa2550))
+* **ml:** implement cat recognition pipeline with feature extraction ([a3b902e](https://github.com/biancarosa/cat-activities-monitor/commit/a3b902e57cbb5eb4c2978b45e5b65f913b4c5b49))
+
+
+### Bug Fixes
+
+* Address linting issues in backend and frontend ([1d43727](https://github.com/biancarosa/cat-activities-monitor/commit/1d43727311070b91c4208b2efc6acf04592226a8))
+* **api:** resolve ruff linting errors ([6ee5a18](https://github.com/biancarosa/cat-activities-monitor/commit/6ee5a18fef7186b403683dc6a396dceffac14a1a))
+* handle list format in debug script database check ([aba2e25](https://github.com/biancarosa/cat-activities-monitor/commit/aba2e2504f36723ddef1244c9119177c90fe6da5))
+* **ml:** add COCO_CLASSES to utils module for YOLO detection ([6997e3a](https://github.com/biancarosa/cat-activities-monitor/commit/6997e3ae92ee97850f0b671e3a9cacce31710240))
+* persist cat_name field in detection database storage ([04ec667](https://github.com/biancarosa/cat-activities-monitor/commit/04ec6677797be9405f706cea7cf8d3a66a43b9c8))
+* remove unused variable in settings page ([e0d6de6](https://github.com/biancarosa/cat-activities-monitor/commit/e0d6de612be6cce949bb3853e071e178ee97e9c4))
+* resolve linting issues ([26a0a3f](https://github.com/biancarosa/cat-activities-monitor/commit/26a0a3fd97521fc5d551f53ec0ff10dbb719c94b))
+
+
+### Performance Improvements
+
+* remove features field from API responses ([d3b867d](https://github.com/biancarosa/cat-activities-monitor/commit/d3b867d8d0930cb2cfee7490c15440616e22140f))
+
+
+### Code Refactoring
+
+* **api:** remove dup variable & fix imports ([fee929a](https://github.com/biancarosa/cat-activities-monitor/commit/fee929adf1df8e3fd5648832e5259d5458ae0520))
+
+
+### Documentation
+
+* consolidate debug documentation and update project structure ([12cfa48](https://github.com/biancarosa/cat-activities-monitor/commit/12cfa48a048bf1386c2519aeee9eca3ee07f4090))
+* update claude MD with docs folder ([642eaf3](https://github.com/biancarosa/cat-activities-monitor/commit/642eaf3bf3f2ed6ec120e9ad24d4963de9d9f360))
+* update CLAUDE.md with session learnings and corrections ([b16c47b](https://github.com/biancarosa/cat-activities-monitor/commit/b16c47b395d47359649f5bd9f78e1b8f12f892fc))
+
 ## [0.2.0](https://github.com/biancarosa/cat-activities-monitor/compare/v0.1.2...v0.2.0) (2025-06-15)
 
 
