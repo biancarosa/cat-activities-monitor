@@ -701,7 +701,18 @@ async def _export_yolo_format(training_data: TrainingData) -> Dict[str, Any]:
                     user_annotations = feedback_data.get('user_annotations', [])
                     for annotation in user_annotations:
                         bbox = annotation.get('bounding_box', {})
-                        class_id = annotation.get('class_id', 15)
+                        
+                        # Use corrected class ID if available, otherwise original
+                        corrected_class_id = annotation.get('corrected_class_id')
+                        original_class_id = annotation.get('class_id', 15)
+                        
+                        # Handle rejection feedback - skip rejected annotations
+                        if corrected_class_id == -1:  # Rejection marker
+                            logger.debug(f"Skipping rejected annotation in training export")
+                            continue
+                        
+                        # Use corrected class ID if provided, otherwise original
+                        class_id = corrected_class_id if corrected_class_id is not None else original_class_id
                         
                         if bbox and 'x1' in bbox:
                             center_x = ((bbox["x1"] + bbox["x2"]) / 2) / img_width
@@ -711,6 +722,14 @@ async def _export_yolo_format(training_data: TrainingData) -> Dict[str, Any]:
                             
                             f.write(f"{class_id} {center_x:.6f} {center_y:.6f} {width:.6f} {height:.6f}\n")
                             exported_annotations += 1
+                            
+                            # Log class corrections for debugging
+                            if corrected_class_id is not None and corrected_class_id != original_class_id:
+                                corrected_class_name = annotation.get('corrected_class_name', 'unknown')
+                                original_class_name = annotation.get('class_name', 'unknown')
+                                logger.info(f"🔄 Class correction applied: {original_class_name} (id={original_class_id}) -> {corrected_class_name} (id={class_id})")
+                        else:
+                            logger.warning(f"Invalid bounding box in annotation: {bbox}")
                 
                 exported_images += 1
                 

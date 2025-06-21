@@ -433,6 +433,8 @@ export interface FeedbackAnnotation {
   correct_activity?: string;
   activity_confidence?: number;
   cat_profile_uuid?: string;
+  corrected_class_id?: number;
+  corrected_class_name?: string;
 }
 
 export interface ImageFeedback {

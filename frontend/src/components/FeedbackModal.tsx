@@ -55,11 +55,13 @@ export default function FeedbackModal({
     confidence: number;
     feedbackType: 'confirm' | 'reject' | 'correct' | 'skip';
     catProfileUuid: string;
+    correctedClassId?: number;
+    correctedClassName?: string;
   }>>({});
   
   const [notes, setNotes] = useState('');
 
-  const handleCatAnnotationChange = (detectionIndex: number, field: string, value: string | number) => {
+  const handleCatAnnotationChange = (detectionIndex: number, field: string, value: string | number | undefined) => {
     setCatAnnotations(prev => ({
       ...prev,
       [detectionIndex]: {
@@ -118,7 +120,9 @@ export default function FeedbackModal({
             activity_feedback: annotation.activityFeedback || undefined,
             correct_activity: annotation.activity !== 'unknown' ? annotation.activity : undefined,
             activity_confidence: annotation.confidence || 0.8,
-            cat_profile_uuid: annotation.catProfileUuid || undefined
+            cat_profile_uuid: annotation.catProfileUuid || undefined,
+            corrected_class_id: annotation.correctedClassId || undefined,
+            corrected_class_name: annotation.correctedClassName || undefined
           });
         }
       });
@@ -408,6 +412,51 @@ export default function FeedbackModal({
                           <option key={profile.cat_uuid} value={profile.cat_uuid}>{profile.name}</option>
                         ))}
                       </select>
+                    </div>
+                  )}
+                  
+                  {/* Class Correction - Only show for correct */}
+                  {currentFeedback === 'correct' && (
+                    <div className="grid grid-cols-1 gap-3 border-t pt-3">
+                      <Label className="text-xs font-medium flex items-center space-x-2">
+                        <div 
+                          className="h-2 w-2 rounded-full"
+                          style={{ backgroundColor: catColor }}
+                        />
+                        <span>Correct Classification</span>
+                      </Label>
+                      <div className="space-y-1">
+                        <p className="text-xs text-muted-foreground">
+                          Currently detected as: <strong>{detection.class_name}</strong>
+                        </p>
+                        <select
+                          className="w-full px-3 py-2 text-sm border rounded-md bg-background"
+                          value={catAnnotations[index]?.correctedClassId || ''}
+                          onChange={e => {
+                            const value = e.target.value;
+                            if (value === 'reject') {
+                              handleCatAnnotationChange(index, 'correctedClassId', -1);
+                              handleCatAnnotationChange(index, 'correctedClassName', 'reject');
+                            } else if (value) {
+                              handleCatAnnotationChange(index, 'correctedClassId', parseInt(value));
+                              handleCatAnnotationChange(index, 'correctedClassName', value === '15' ? 'cat' : 'dog');
+                            } else {
+                              handleCatAnnotationChange(index, 'correctedClassId', undefined);
+                              handleCatAnnotationChange(index, 'correctedClassName', undefined);
+                            }
+                          }}
+                        >
+                          <option value="">Keep original classification ({detection.class_name})</option>
+                          <option value="15">🐱 Cat</option>
+                          <option value="16">🐕 Dog</option>
+                          <option value="reject">❌ Not an animal (reject)</option>
+                        </select>
+                        {catAnnotations[index]?.correctedClassId && catAnnotations[index]?.correctedClassId !== detection.class_id && (
+                          <p className="text-xs text-blue-600 dark:text-blue-400">
+                            ✏️ Will be corrected to: <strong>{catAnnotations[index]?.correctedClassName}</strong>
+                          </p>
+                        )}
+                      </div>
                     </div>
                   )}
                   

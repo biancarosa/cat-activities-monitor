@@ -166,7 +166,18 @@ class YOLOTrainer(BaseTrainer):
                             user_annotations = feedback_data.get('user_annotations', [])
                             for annotation in user_annotations:
                                 bbox = annotation.get('bounding_box', {})
-                                class_id = annotation.get('class_id', 15)  # Default to cat
+                                
+                                # Use corrected class ID if available, otherwise original
+                                corrected_class_id = annotation.get('corrected_class_id')
+                                original_class_id = annotation.get('class_id', 15)  # Default to cat
+                                
+                                # Handle rejection feedback - skip rejected annotations
+                                if corrected_class_id == -1:  # Rejection marker
+                                    self.logger.debug(f"Skipping rejected annotation in YOLO training")
+                                    continue
+                                
+                                # Use corrected class ID if provided, otherwise original
+                                class_id = corrected_class_id if corrected_class_id is not None else original_class_id
                                 
                                 if bbox and 'x1' in bbox and 'x2' in bbox:
                                     # Convert to YOLO format (normalized center x, center y, width, height)
@@ -178,6 +189,12 @@ class YOLOTrainer(BaseTrainer):
                                     # Write YOLO format line
                                     f.write(f"{class_id} {center_x:.6f} {center_y:.6f} {width:.6f} {height:.6f}\n")
                                     annotation_count += 1
+                                    
+                                    # Log class corrections for debugging
+                                    if corrected_class_id is not None and corrected_class_id != original_class_id:
+                                        corrected_class_name = annotation.get('corrected_class_name', 'unknown')
+                                        original_class_name = annotation.get('class_name', 'unknown')
+                                        self.logger.info(f"🔄 YOLO class correction: {original_class_name} (id={original_class_id}) -> {corrected_class_name} (id={class_id})")
                         
                         exported_count += 1
                         

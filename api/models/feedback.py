@@ -105,6 +105,17 @@ class FeedbackAnnotation(BaseModel):
         description="UUID of the selected cat profile, if provided by the user",
         example="550e8400-e29b-41d4-a716-446655440000"
     )
+    corrected_class_id: Optional[int] = Field(
+        None,
+        description="User-corrected YOLO class ID when the original detection was wrong",
+        example=16,
+        ge=0
+    )
+    corrected_class_name: Optional[str] = Field(
+        None,
+        description="Human-readable name of the corrected class",
+        example="dog"
+    )
 
 
 class ImageFeedback(BaseModel):
