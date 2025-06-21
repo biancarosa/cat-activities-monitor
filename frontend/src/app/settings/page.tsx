@@ -175,7 +175,7 @@ export default function SettingsPage() {
       setSwitchingModel(true);
       setError(null);
       setSuccessMessage(null);
-      const result = await trainingApi.switchModel(modelFilename);
+      await trainingApi.switchModel(modelFilename);
       setSuccessMessage(`Model switched successfully to ${modelFilename}`);
       await fetchData(); // Refresh all data to show new current model
     } catch (err) {
