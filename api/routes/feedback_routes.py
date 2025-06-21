@@ -126,10 +126,11 @@ async def submit_feedback(request: Request, feedback: ImageFeedback):
                                 
                                 # Ensure valid bounding box
                                 if x2 > x1 and y2 > y1 and x1 >= 0 and y1 >= 0:
-                                    cat_crop = detection_image[y1:y2, x1:x2]
+                                    cat_crop_array = detection_image[y1:y2, x1:x2]
+                                    cat_crop = Image.fromarray(cat_crop_array)
                                     
                                     # Extract features
-                                    features = await feature_extractor._extract_features(cat_crop)
+                                    features = feature_extractor._extract_features(cat_crop)
                                     
                                     if features is not None and len(features) > 0:
                                         # Update cat profile with features using ensemble averaging
