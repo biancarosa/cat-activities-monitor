@@ -61,6 +61,7 @@ cat-activities-monitor/
 │   ├── models/                 # Pydantic data models
 │   ├── routes/                 # API route handlers
 │   ├── services/               # Business logic services
+│   ├── scripts/                # Debug and utility scripts
 │   ├── ml_models/              # YOLO model files
 │   ├── detections/             # Generated detection images
 │   ├── ml_models/training_data/ # ML training data
@@ -71,6 +72,7 @@ cat-activities-monitor/
 │   ├── src/components/         # React components
 │   │   └── ui/                 # shadcn/ui components
 │   └── src/lib/                # Utilities and API client
+├── DEBUG_CAT_IDENTIFICATION.md # Debug guide for cat identification
 └── docker-compose.yml          # Development environment
 ```
 
@@ -84,6 +86,7 @@ cat-activities-monitor/
 
 ### Web Interface
 - **Image Gallery**: Browse and view detected cat activities
+- **Cat Name Display**: Shows identified cat names with green badges, "unidentified" with gray badges
 - **Per-Cat Feedback System**: Individual feedback for each cat detection (confirm, reject, correct, or skip)
 - **Smart Annotation**: Only requires detailed annotations for confirmed/corrected cats
 - **Progress Tracking**: Monitor annotation progress across all images
@@ -96,6 +99,7 @@ cat-activities-monitor/
 - **Feedback Collection**: Collect human annotations for ML model training
 - **Training Pipeline**: Export training data and retrain models automatically
 - **System Monitoring**: Health checks and system status endpoints
+- **Performance Optimization**: Features field removed from API responses to reduce payload size
 
 ## Coding Conventions
 
@@ -116,6 +120,7 @@ cat-activities-monitor/
 - **Async Operations**: Full async/await pattern throughout
 - **Color System**: Consistent color assignment methods for visual coherence
 - **Image Processing**: PIL-based drawing with standardized color palette
+- **Scripts**: Debug and utility scripts in `/api/scripts/` directory with `uv run` execution
 
 ### File Naming
 - **Frontend**: PascalCase for components, camelCase for utilities
@@ -142,7 +147,7 @@ The YOLO model settings are optimized for multi-cat detection:
 global:
   ml_model_config:
     model: "ml_models/yolo11l.pt"
-    confidence_threshold: 0.01  # Ultra-sensitive for detecting both cats
+    confidence_threshold: 0.5   # Balanced threshold for reliable detection
     iou_threshold: 0.1          # Low IoU for overlapping detections
     target_classes: [15, 16]    # Cats and dogs (YOLO sometimes confuses them)
 ```
@@ -270,11 +275,13 @@ The frontend API URL is configured at runtime through the Settings page (`/setti
 5. **Database Connection**: Verify PostgreSQL is running and accessible
 6. **Color Inconsistencies**: Verify color palette matches between frontend and backend
 7. **Training Data Issues**: Ensure minimum annotation requirements are met
+8. **Cat Identification Issues**: Use debug script to diagnose recognition problems
 
 ### Debugging
 - **Frontend**: Browser dev tools, React DevTools
 - **Backend**: FastAPI interactive docs at `/docs`, application logs
 - **Database**: PostgreSQL logs, connection status
+- **Cat Identification**: `docker-compose exec api uv run python scripts/debug_cat_identification.py <image_filename> [expected_cat]`
 
 ## Contributing
 
@@ -354,15 +361,14 @@ The application maintains visual consistency between backend-generated images an
 ### YOLO Configuration
 - **Model**: YOLO11 Large (best accuracy for cat detection)
 - **Classes**: Detects cats (class 15) and dogs (class 16)
-- **Optimization**: Ultra-low confidence threshold for maximum sensitivity
+- **Optimization**: Balanced confidence threshold (0.5) for reliable detection
 - **Output**: Bounding boxes with confidence scores and class predictions
 - **Visual Output**: Color-coded bounding boxes with cat index labels
 
 ### Activity Detection
-- **Pose Analysis**: Analyzes bounding box characteristics to determine cat activities
-- **Movement Tracking**: Compares positions across frames to detect movement patterns
-- **Temporal Patterns**: Uses activity history to improve confidence and duration estimates
-- **Activity Types**: sitting, lying, standing, moving, eating, playing, sleeping, grooming
+- **Current Status**: Activity detection not implemented in current model
+- **Future Implementation**: Planned pose analysis and movement tracking
+- **Note**: Activity detection components exist but are not active in production
 
 ### Training Data
 - Enhanced training data stored in `/api/ml_models/training_data/`
@@ -370,7 +376,44 @@ The application maintains visual consistency between backend-generated images an
 - YOLO format export for model retraining with user feedback
 - Minimum 10 annotations required for retraining initiation
 
+### Cat Identification System
+- **Feature Extraction**: ResNet50-based feature extraction (2048 dimensions)
+- **Similarity Matching**: Cosine similarity between extracted features and stored profiles
+- **ML Enhancement**: SVM model for confidence enhancement (optional)
+- **Thresholds**: 0.75 for confident matches, 0.60 for suggestions
+- **Profile Management**: Feature templates stored in cat profiles for consistent recognition
+- **Real-time Processing**: Identifies cats during live camera feeds with UUID/name assignment
+
 ## Workflow Memories
 
 - After making changes on either the api or frontend, restart docker container of the changed service, and check their logs to see if things are still working.
+- Use `uv run` for all Python script execution in containers (not just `python`)
+- Features arrays (2048 dimensions) are only used internally for ML analysis, not sent to frontend
+- Cat identification works via feature extraction → similarity matching → profile assignment
+- Debug cat identification issues using `docker-compose exec api uv run python scripts/debug_cat_identification.py`
+
+## Debug Tools
+
+### Cat Identification Debug Script
+Comprehensive diagnostic tool for cat identification issues:
+
+```bash
+# Usage
+docker-compose exec api uv run python scripts/debug_cat_identification.py <image_filename> [expected_cat_name]
+
+# Example
+docker-compose exec api uv run python scripts/debug_cat_identification.py living-room_20250621_155350_activity_detections.jpg Chico
 ```
+
+**Diagnostic Areas:**
+- Database record verification
+- File system checks  
+- Cat profile analysis (feature templates)
+- Feature extraction testing
+- Identification algorithm simulation
+- Model diagnostics and configuration
+
+**Common Solutions:**
+- Feature templates missing: Re-submit feedback with cat profile assignments
+- Low similarity scores: Add more diverse training examples
+- Model not loaded: Check `ml_models/cat_identification/` directory
