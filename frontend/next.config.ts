@@ -25,17 +25,17 @@ const nextConfig: NextConfig = {
   // Enable source maps in development
   productionBrowserSourceMaps: false,
   
-  // Configure webpack for better development experience
-  webpack: (config, { dev, isServer }) => {
-    if (dev && !isServer) {
-      // Enable faster refresh in development
-      config.watchOptions = {
-        poll: 1000,
-        aggregateTimeout: 300,
-      };
-    }
-    return config;
-  },
+  // Remove webpack configuration when using Turbopack to avoid conflicts
+  // webpack: (config, { dev, isServer }) => {
+  //   if (dev && !isServer) {
+  //     // Enable faster refresh in development
+  //     config.watchOptions = {
+  //       poll: 1000,
+  //       aggregateTimeout: 300,
+  //     };
+  //   }
+  //   return config;
+  // },
 
 };
 

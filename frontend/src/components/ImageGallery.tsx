@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -46,12 +46,29 @@ export default function ImageGallery({ className = '', onStatsUpdate }: ImageGal
   const [totalPages, setTotalPages] = useState(1);
   const [totalImages, setTotalImages] = useState(0);
   const [pageSize] = useState(20);
+  const currentPageRef = useRef(currentPage);
+  const isMountedRef = useRef(true);
 
-  const fetchImages = useCallback(async (page: number = currentPage) => {
+  // Update ref when currentPage changes
+  useEffect(() => {
+    currentPageRef.current = currentPage;
+  }, [currentPage]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
+  const fetchImages = useCallback(async (page: number = currentPageRef.current) => {
     try {
+      if (!isMountedRef.current) return;
       setLoading(true);
       setError(null);
       const response = await detectionApi.getImages(page, pageSize);
+      
+      if (!isMountedRef.current) return;
       setImages(response.images);
       setCurrentPage(response.page);
       setTotalPages(response.total_pages);
@@ -67,16 +84,19 @@ export default function ImageGallery({ className = '', onStatsUpdate }: ImageGal
       // Notify parent component of stats update (use total, not just current page)
       onStatsUpdate?.(response.total, annotatedCount);
     } catch (err) {
+      if (!isMountedRef.current) return;
       setError(err instanceof Error ? err.message : 'Failed to fetch images');
     } finally {
-      setLoading(false);
+      if (isMountedRef.current) {
+        setLoading(false);
+      }
     }
-  }, [currentPage, pageSize, onStatsUpdate]);
+  }, [pageSize, onStatsUpdate]);
 
   const handleRefresh = async () => {
     try {
       setRefreshing(true);
-      await fetchImages(currentPage);
+      await fetchImages(currentPageRef.current);
     } finally {
       setRefreshing(false);
     }
@@ -85,7 +105,7 @@ export default function ImageGallery({ className = '', onStatsUpdate }: ImageGal
   const handlePageChange = useCallback(async (page: number) => {
     setCurrentPage(page);
     await fetchImages(page);
-  }, [fetchImages]);
+  }, []);
 
   const handleFetchNew = async () => {
     try {
@@ -93,7 +113,7 @@ export default function ImageGallery({ className = '', onStatsUpdate }: ImageGal
       await cameraApi.fetchAll();
       // Wait a moment for images to be processed, then refresh
       setTimeout(() => {
-        fetchImages(currentPage);
+        fetchImages(currentPageRef.current);
       }, 2000);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch new images');
@@ -120,7 +140,7 @@ export default function ImageGallery({ className = '', onStatsUpdate }: ImageGal
       setTimeout(() => setSuccessMessage(null), 5000);
       
       // Refresh the current page to show updated results
-      await fetchImages(currentPage);
+      await fetchImages(currentPageRef.current);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to reprocess image');
     } finally {
@@ -150,7 +170,7 @@ export default function ImageGallery({ className = '', onStatsUpdate }: ImageGal
       setTimeout(() => setSuccessMessage(null), 8000);
       
       // Refresh the current page to show updated results
-      await fetchImages(currentPage);
+      await fetchImages(currentPageRef.current);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to reprocess all images');
     } finally {
@@ -159,7 +179,7 @@ export default function ImageGallery({ className = '', onStatsUpdate }: ImageGal
   };
 
   useEffect(() => {
-    if (configLoaded) {
+    if (configLoaded && isMountedRef.current) {
       fetchImages(1);
       setCurrentPage(1);
     }
@@ -169,12 +189,13 @@ export default function ImageGallery({ className = '', onStatsUpdate }: ImageGal
   // Listen for config loaded event and API URL changes
   useEffect(() => {
     const handleConfigLoaded = () => {
+      if (!isMountedRef.current) return;
       setConfigLoaded(true);
     };
 
     const handleApiUrlChanged = () => {
       // Force refresh images when API URL changes
-      if (configLoaded) {
+      if (configLoaded && isMountedRef.current) {
         setCurrentPage(1);
         fetchImages(1);
       }
@@ -188,7 +209,7 @@ export default function ImageGallery({ className = '', onStatsUpdate }: ImageGal
         window.removeEventListener('apiUrlChanged', handleApiUrlChanged);
       };
     }
-  }, [configLoaded, fetchImages]);
+  }, [configLoaded]); // Removed fetchImages from dependency array to prevent infinite loop
 
   // Filter images by source
   const filteredImages = selectedSource === 'all' 
