@@ -51,7 +51,8 @@ class FeatureClusteringTrainer(BaseTrainer):
         
         # Initialize preprocessing components
         self.scaler = StandardScaler()
-        self.pca = PCA(n_components=self.get_config("pca_components", 256))  # Reduce dimensionality
+        # PCA will be initialized with adaptive components during training
+        self.pca = None
         
         self.logger.info("Feature clustering trainer initialized")
         self.logger.info(f"Model directory: {self.model_dir}")
@@ -81,6 +82,19 @@ class FeatureClusteringTrainer(BaseTrainer):
             
             # Preprocess features
             X_scaled = self.scaler.fit_transform(X)
+            
+            # Initialize PCA with adaptive components
+            max_components = min(X.shape[0], X.shape[1])  # min(samples, features)
+            target_components = min(
+                self.get_config("pca_components", 256),
+                max_components
+            )
+            
+            # Ensure we have at least 2 components for clustering
+            if target_components < 2:
+                target_components = min(2, max_components)
+            
+            self.pca = PCA(n_components=target_components)
             X_pca = self.pca.fit_transform(X_scaled)
             
             self.logger.info(f"Reduced dimensions from {X.shape[1]} to {X_pca.shape[1]}")
@@ -147,7 +161,7 @@ class FeatureClusteringTrainer(BaseTrainer):
                 'optimal_clusters': best_results.get('optimal_k', 'auto'),
                 'true_cat_count': true_k,
                 'pca_variance_explained': float(self.pca.explained_variance_ratio_.sum()),
-                'clustering_results': clustering_results
+                'clustering_results': self._make_clustering_results_serializable(clustering_results)
             }
             
             self.logger.info(f"Clustering training completed in {training_time:.2f}s")
@@ -333,7 +347,7 @@ class FeatureClusteringTrainer(BaseTrainer):
     
     async def get_minimum_samples_required(self) -> int:
         """Get minimum samples required for clustering."""
-        return self.get_config("min_samples", 15)  # Need enough data for meaningful clusters
+        return self.get_config("min_samples", 6)  # Lower minimum for small datasets
     
     async def validate_training_data(self, training_data: TrainingData) -> bool:
         """Validate training data for clustering."""
@@ -342,8 +356,9 @@ class FeatureClusteringTrainer(BaseTrainer):
         
         # Check that we have enough unique samples
         unique_features = set(tuple(f) for f in training_data.features)
-        if len(unique_features) < self.get_config("min_unique_samples", 10):
-            self.logger.error("Need at least 10 unique feature vectors for clustering")
+        min_unique_samples = self.get_config("min_unique_samples", 3)  # Lower default for small datasets
+        if len(unique_features) < min_unique_samples:
+            self.logger.error(f"Need at least {min_unique_samples} unique feature vectors for clustering, got {len(unique_features)}")
             return False
         
         # Check feature dimensions
@@ -417,3 +432,25 @@ class FeatureClusteringTrainer(BaseTrainer):
         # Sort by timestamp (newest first)
         model_files.sort(reverse=True)
         return os.path.join(self.model_dir, model_files[0])
+
+    def _make_clustering_results_serializable(self, clustering_results: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Convert clustering results to a serializable format.
+        
+        Args:
+            clustering_results: Dictionary containing clustering results
+            
+        Returns:
+            Serialized version of clustering results without sklearn objects
+        """
+        serializable_results = {}
+        for method, results in clustering_results.items():
+            serializable_results[method] = {
+                'optimal_k': results.get('optimal_k'),
+                'optimal_eps': results.get('optimal_eps'),
+                'silhouette_score': results.get('silhouette_score'),
+                'ari_score': results.get('ari_score'),
+                'k_scores': results.get('k_scores', {}),
+                'eps_scores': results.get('eps_scores', {})
+            }
+        return serializable_results

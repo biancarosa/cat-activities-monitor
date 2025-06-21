@@ -286,6 +286,7 @@ class CatIdentificationService:
             
             profiles_with_features = []
             for profile in profiles:
+                logger.info(f"Profile {profile['name']} feature_template type: {type(profile['feature_template'])}, length: {len(profile['feature_template']) if profile['feature_template'] else 'None'}")
                 if profile["feature_template"] and len(profile["feature_template"]) == 2048:
                     profiles_with_features.append({
                         "uuid": profile["cat_uuid"],

@@ -136,6 +136,13 @@ components:
             y2: 400.1
           title: Bounding Box
           type: object
+        cat_name:
+          anyOf:
+          - type: string
+          - type: 'null'
+          description: Identified name of the cat (if recognized)
+          example: Chico
+          title: Cat Name
         cat_uuid:
           anyOf:
           - type: string
@@ -161,6 +168,36 @@ components:
           minimum: 0.0
           title: Confidence
           type: number
+        features:
+          anyOf:
+          - items:
+              type: number
+            type: array
+          - type: 'null'
+          description: Deep learning feature vector for cat recognition (2048 dimensions)
+          example:
+          - 0.123
+          - -0.456
+          - 0.789
+          title: Features
+        identification_suggestion:
+          anyOf:
+          - additionalProperties: true
+            type: object
+          - type: 'null'
+          description: Cat identification suggestions based on feature matching
+          example:
+            confidence: 0.85
+            is_confident_match: true
+            is_new_cat: false
+            similarity_threshold: 0.75
+            suggested_profile:
+              description: Orange tabby with white paws
+              name: Whiskers
+              uuid: 550e8400-e29b-41d4-a716-446655440000
+            suggestion_threshold: 0.6
+            top_matches: []
+          title: Identification Suggestion
       required:
       - class_id
       - class_name
@@ -228,6 +265,22 @@ components:
           - $ref: '#/components/schemas/CatActivity'
           - type: 'null'
           description: User's correction of the detected activity
+        corrected_class_id:
+          anyOf:
+          - minimum: 0.0
+            type: integer
+          - type: 'null'
+          description: User-corrected YOLO class ID when the original detection was
+            wrong
+          example: 16
+          title: Corrected Class Id
+        corrected_class_name:
+          anyOf:
+          - type: string
+          - type: 'null'
+          description: Human-readable name of the corrected class
+          example: dog
+          title: Corrected Class Name
       required:
       - class_id
       - class_name
@@ -312,32 +365,81 @@ components:
       - timestamp
       title: ImageFeedback
       type: object
-    ModelRetrainRequest:
-      description: 'Request model for retraining with custom model name.
-
-
-        Used to initiate model retraining with feedback data and specify
-
-        a custom name for the resulting model.'
+    TrainingStatusResponse:
+      description: Response for training status.
       properties:
-        custom_model_name:
-          anyOf:
-          - maxLength: 100
-            pattern: ^[a-zA-Z0-9_-]+$
-            type: string
-          - type: 'null'
-          description: Custom name for the retrained model
-          example: retrained_model_v2
-          title: Custom Model Name
-        description:
-          anyOf:
-          - maxLength: 500
-            type: string
-          - type: 'null'
-          description: Optional description of the retraining process
-          example: Retrained with 500 new annotations focusing on sleeping cats
-          title: Description
-      title: ModelRetrainRequest
+        available_models:
+          items:
+            additionalProperties: true
+            type: object
+          title: Available Models
+          type: array
+        cat_id_training_ready:
+          title: Cat Id Training Ready
+          type: boolean
+        cat_profiles:
+          title: Cat Profiles
+          type: integer
+        ready_for_training:
+          title: Ready For Training
+          type: boolean
+        requirements:
+          additionalProperties: true
+          title: Requirements
+          type: object
+        total_annotations:
+          title: Total Annotations
+          type: integer
+        total_feedback:
+          title: Total Feedback
+          type: integer
+        unique_cats:
+          title: Unique Cats
+          type: integer
+        yolo_training_ready:
+          title: Yolo Training Ready
+          type: boolean
+      required:
+      - ready_for_training
+      - yolo_training_ready
+      - cat_id_training_ready
+      - total_feedback
+      - total_annotations
+      - unique_cats
+      - cat_profiles
+      - available_models
+      - requirements
+      title: TrainingStatusResponse
+      type: object
+    UnifiedTrainingRequest:
+      description: Request for unified training pipeline.
+      properties:
+        include_clustering:
+          default: true
+          description: Whether to include clustering analysis
+          title: Include Clustering
+          type: boolean
+        parallel_training:
+          default: false
+          description: Whether to run trainers in parallel
+          title: Parallel Training
+          type: boolean
+        train_cat_identification:
+          default: true
+          description: Whether to train cat identification models
+          title: Train Cat Identification
+          type: boolean
+        train_yolo:
+          default: true
+          description: Whether to train YOLO object detection model
+          title: Train Yolo
+          type: boolean
+        yolo_config:
+          additionalProperties: true
+          description: YOLO training configuration
+          title: Yolo Config
+          type: object
+      title: UnifiedTrainingRequest
       type: object
     UpdateCatProfileRequest:
       properties:
@@ -647,8 +749,8 @@ paths:
                 results:
                 - camera_name: living_room
                   detection:
-                    count: 2
-                    detected: true
+                    cat_detected: true
+                    cats_count: 2
                   success: true
                 - camera_name: kitchen
                   error: Connection timeout
@@ -682,11 +784,12 @@ paths:
             application/json:
               example:
                 camera_name: living_room
+                data_source: postgresql_database
                 detection:
                   activities: []
+                  cat_detected: true
+                  cats_count: 2
                   confidence: 0.89
-                  count: 2
-                  detected: true
                   detections:
                   - bounding_box:
                       height: 249.9
@@ -697,7 +800,7 @@ paths:
                       y2: 400.1
                     class_id: 15
                     confidence: 0.89
-                  total_animals: 2
+                  total_cats: 2
                 message: Successfully fetched 'living_room'
                 success: true
                 url: http://camera1.local/snapshot.jpg
@@ -872,48 +975,6 @@ paths:
               schema: {}
           description: List of available detection classes
       summary: Get Available Detection Classes
-      tags:
-      - detections
-  /detections/database/cleanup:
-    post:
-      description: Clean up old detection results from database, keeping only recent
-        records.
-      operationId: cleanup_detection_database_detections_database_cleanup_post
-      parameters:
-      - in: query
-        name: keep_days
-        required: false
-        schema:
-          default: 7
-          title: Keep Days
-          type: integer
-      responses:
-        '200':
-          content:
-            application/json:
-              schema: {}
-          description: Database cleanup results
-        '422':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
-          description: Validation Error
-      summary: Clean Up Detection Database
-      tags:
-      - detections
-  /detections/database/status:
-    get:
-      description: Get detection database status and statistics including recent activity
-        and detection counts.
-      operationId: get_detection_database_status_detections_database_status_get
-      responses:
-        '200':
-          content:
-            application/json:
-              schema: {}
-          description: Detection database status and statistics
-      summary: Get Detection Database Status
       tags:
       - detections
   /detections/images:
@@ -1249,36 +1310,56 @@ paths:
       summary: Get System Status
       tags:
       - system
-  /training/export:
+  /training/cat-identification/suggest:
     post:
-      description: Export feedback data in YOLO format that preserves COCO classes
-        and adds metadata.
-      operationId: export_training_data_training_export_post
+      description: 'Get cat identification suggestions for feature vectors.
+
+
+        This endpoint analyzes feature vectors and returns suggestions for which
+
+        cat profiles they might match, along with confidence scores.'
+      operationId: suggest_cat_identifications_training_cat_identification_suggest_post
       responses:
         '200':
           content:
             application/json:
-              schema: {}
+              schema:
+                items:
+                  additionalProperties: true
+                  type: object
+                title: Response Suggest Cat Identifications Training Cat Identification
+                  Suggest Post
+                type: array
           description: Successful Response
-      summary: Export Training Data
+      summary: Suggest Cat Identifications
       tags:
       - training
-  /training/retrain:
+      - training
+  /training/cat-identification/update-profile-features/{cat_profile_uuid}:
     post:
-      description: Model retraining that preserves COCO classes and adds cat identification
-        capabilities through fine-tuning.
-      operationId: retrain_model_training_retrain_post
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/ModelRetrainRequest'
-              default: {}
+      description: 'Update a cat profile with new feature vector.
+
+
+        This endpoint allows updating a cat profile''s feature template
+
+        with new feature data, using ensemble averaging.'
+      operationId: update_cat_profile_features_training_cat_identification_update_profile_features__cat_profile_uuid__post
+      parameters:
+      - in: path
+        name: cat_profile_uuid
+        required: true
+        schema:
+          title: Cat Profile Uuid
+          type: string
       responses:
         '200':
           content:
             application/json:
-              schema: {}
+              schema:
+                additionalProperties: true
+                title: Response Update Cat Profile Features Training Cat Identification
+                  Update Profile Features  Cat Profile Uuid  Post
+                type: object
           description: Successful Response
         '422':
           content:
@@ -1286,21 +1367,66 @@ paths:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
           description: Validation Error
-      summary: Retrain Model
+      summary: Update Cat Profile Features
       tags:
+      - training
+      - training
+  /training/retrain:
+    post:
+      description: 'Train models using the unified training pipeline.
+
+
+        This endpoint can train YOLO object detection models, cat identification
+
+        models, or both using the same feedback data.'
+      operationId: retrain_models_training_retrain_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UnifiedTrainingRequest'
+              default:
+                include_clustering: true
+                parallel_training: false
+                train_cat_identification: true
+                train_yolo: true
+                yolo_config:
+                  base_model: yolo11l.pt
+                  batch_size: 16
+                  epochs: 50
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                title: Response Retrain Models Training Retrain Post
+                type: object
+          description: Successful Response
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      summary: Retrain Models
+      tags:
+      - training
       - training
   /training/status:
     get:
-      description: Get training status and available models.
+      description: Get comprehensive training status for all training types.
       operationId: get_training_status_training_status_get
       responses:
         '200':
           content:
             application/json:
-              schema: {}
+              schema:
+                $ref: '#/components/schemas/TrainingStatusResponse'
           description: Successful Response
       summary: Get Training Status
       tags:
+      - training
       - training
   /training/switch-model:
     post:
@@ -1310,10 +1436,14 @@ paths:
         '200':
           content:
             application/json:
-              schema: {}
+              schema:
+                additionalProperties: true
+                title: Response Switch Model Training Switch Model Post
+                type: object
           description: Successful Response
       summary: Switch Model
       tags:
+      - training
       - training
 servers:
 - description: Development server

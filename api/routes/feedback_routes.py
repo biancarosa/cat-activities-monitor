@@ -137,15 +137,14 @@ async def submit_feedback(request: Request, feedback: ImageFeedback):
                                         cat_identification_service = request.app.state.cat_identification_service
                                         if cat_identification_service:
                                             async with database_service.get_session() as session:
-                                                await cat_identification_service.update_cat_profile_features(
+                                                logger.info(f"Updating cat profile {annotation.cat_profile_uuid} with features of length {len(features.tolist())}")
+                                                success = await cat_identification_service.update_cat_profile_features(
                                                     annotation.cat_profile_uuid,
                                                     features.tolist(),
                                                     session
                                                 )
-                                            logger.info(
-                                                f"🧠 Updated feature template for {profile.get('name')} "
-                                                f"with {len(features)}-dimensional features"
-                                            )
+                                                await session.commit()  # Commit the session to persist the feature update
+                                                logger.info(f"Update success: {success}")
                                         else:
                                             logger.warning("Cat identification service not available for feature updates")
                                     else:

@@ -334,7 +334,9 @@ class DatabaseService:
                 CatProfile.cat_uuid == cat_uuid
             ).values(feature_template=feature_template)
             
-            await session.execute(stmt)
+            result = await session.execute(stmt)
+            rows_affected = result.rowcount
+            logger.info(f"Update cat profile features: {cat_uuid}, rows affected: {rows_affected}, feature length: {len(feature_template)}")
             
             if not session_provided:
                 await session.commit()

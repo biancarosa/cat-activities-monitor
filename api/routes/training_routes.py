@@ -126,40 +126,6 @@ async def get_training_status(request: Request) -> TrainingStatusResponse:
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/export")
-async def export_training_data(request: Request) -> Dict[str, Any]:
-    """Export feedback data for training (backwards compatibility)."""
-    try:
-        database_service = request.app.state.database_service
-        
-        # Extract training data
-        training_data = await _extract_training_data_from_feedback(database_service)
-        
-        if not training_data.metadata:
-            raise HTTPException(
-                status_code=400,
-                detail="No training data available from feedback"
-            )
-        
-        # Export in YOLO format (for backwards compatibility)
-        export_result = await _export_yolo_format(training_data)
-        
-        logger.info(f"Training data exported: {len(training_data.metadata)} samples")
-        
-        return {
-            "message": "Training data exported successfully",
-            "export_path": export_result["training_dir"],
-            "images_count": export_result["images_count"],
-            "labels_count": export_result["labels_count"],
-            "total_annotations": export_result["annotations_count"],
-            "export_timestamp": datetime.now().isoformat()
-        }
-        
-    except Exception as e:
-        logger.error(f"Error exporting training data: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
 @router.post("/retrain")
 async def retrain_models(
     request: Request,
@@ -214,7 +180,8 @@ async def retrain_models(
                 if training_request.include_clustering and total_samples >= 6:
                     clustering_trainer = FeatureClusteringTrainer({
                         "clustering_methods": ["kmeans", "dbscan", "agglomerative"],
-                        "min_unique_samples": 6,  # Lower clustering minimum (correct key name)
+                        "min_unique_samples": 3,  # Lower clustering minimum for small datasets
+                        "pca_components": min(21, total_samples),  # Adaptive PCA components
                     })
                     trainers.append(clustering_trainer)
         

@@ -10,11 +10,11 @@ import json
 import shutil
 import yaml
 import logging
+import asyncio
 from typing import Dict, Any
 from datetime import datetime
 from pathlib import Path
 from PIL import Image
-import subprocess
 
 from .base_trainer import BaseTrainer, TrainingData, TrainingResult
 
@@ -242,9 +242,9 @@ class YOLOTrainer(BaseTrainer):
         from utils import COCO_CLASSES
         
         dataset_config = {
-            "path": str(training_dir.absolute()),
-            "train": "images",
-            "val": "images",  # Use same for validation (small dataset)
+            "path": ".",  # Use relative path since we run from ml_models directory
+            "train": "training_data/images",
+            "val": "training_data/images",  # Use same for validation (small dataset)
             "test": "",
             "nc": 80,  # Full COCO dataset classes
             "names": {int(k): v for k, v in COCO_CLASSES.items()},
@@ -285,8 +285,8 @@ class YOLOTrainer(BaseTrainer):
             # Training arguments - use uv run to ensure correct environment
             train_args = [
                 "uv", "run", "yolo", "train",
-                f"model={base_model_path}",
-                f"data={dataset_yaml}",
+                f"model={self.base_model}",  # Use relative path since we're in ml_models
+                f"data=training_data/dataset.yaml",  # Use relative path
                 f"epochs={self.epochs}",
                 f"batch={self.batch_size}",
                 f"imgsz={self.image_size}",
@@ -303,17 +303,29 @@ class YOLOTrainer(BaseTrainer):
             
             self.logger.info(f"Starting YOLO training: {' '.join(train_args)}")
             
-            # Run training
-            result = subprocess.run(
-                train_args,
-                capture_output=True,
-                text=True,
-                timeout=3600  # 1 hour timeout
-            )
+            # Run training from the ml_models directory to ensure correct paths
+            try:
+                result = await asyncio.wait_for(
+                    asyncio.create_subprocess_exec(
+                        *train_args,
+                        stdout=asyncio.subprocess.PIPE,
+                        stderr=asyncio.subprocess.PIPE,
+                        cwd=Path(self.model_dir)  # Run from ml_models directory
+                    ),
+                    timeout=3600  # 1 hour timeout
+                )
+                
+                stdout, stderr = await result.communicate()
+                
+            except asyncio.TimeoutError:
+                return {
+                    "success": False,
+                    "error": "Training timeout (exceeded 1 hour)"
+                }
             
             if result.returncode == 0:
-                # Find the trained model
-                runs_dir = Path("runs/detect")
+                # Find the trained model - paths are relative to ml_models directory
+                runs_dir = Path(self.model_dir) / "runs/detect"
                 model_dir = runs_dir / model_name
                 best_model = model_dir / "weights" / "best.pt"
                 
@@ -357,18 +369,13 @@ class YOLOTrainer(BaseTrainer):
                         "error": f"Trained model not found at {best_model}"
                     }
             else:
-                error_msg = result.stderr or result.stdout or "Unknown training error"
+                error_msg = stderr.decode('utf-8') or stdout.decode('utf-8') or "Unknown training error"
                 self.logger.error(f"YOLO training failed: {error_msg}")
                 return {
                     "success": False,
                     "error": f"Training failed: {error_msg}"
                 }
                 
-        except subprocess.TimeoutExpired:
-            return {
-                "success": False,
-                "error": "Training timeout (exceeded 1 hour)"
-            }
         except Exception as e:
             self.logger.error(f"Error running YOLO training: {e}")
             return {

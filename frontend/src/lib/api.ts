@@ -326,13 +326,6 @@ class ApiClient {
     });
   }
 
-  // Training endpoints
-  async exportTrainingData(): Promise<TrainingDataExportResult> {
-    return this.request('/training/export', {
-      method: 'POST',
-    });
-  }
-
   async retrainModel(request: ModelRetrainRequest = {}): Promise<ModelRetrainResult> {
     return this.request('/training/retrain', {
       method: 'POST',
