@@ -19,8 +19,7 @@ import {
   Globe,
   Save,
   RotateCcw,
-  Brain,
-  Download,
+  Brain,  
   Play,
   BarChart3,
   Zap,
@@ -45,7 +44,6 @@ export default function SettingsPage() {
   const [apiUrlError, setApiUrlError] = useState<string | null>(null);
 
   // Training state
-  const [exporting, setExporting] = useState(false);
   const [training, setTraining] = useState(false);
   const [switchingModel, setSwitchingModel] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);

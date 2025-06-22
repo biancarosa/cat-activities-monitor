@@ -578,7 +578,6 @@ export const feedbackApi = {
 };
 
 export const trainingApi = {
-  exportData: () => apiClient.exportTrainingData(),
   retrain: (request?: ModelRetrainRequest) => apiClient.retrainModel(request),
   getStatus: () => apiClient.getTrainingStatus(),
   switchModel: (model: string) => apiClient.switchModel(model),
