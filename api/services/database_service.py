@@ -420,6 +420,12 @@ class DatabaseService:
                     "cat_uuid": getattr(d, "cat_uuid", None),
                     "cat_name": getattr(d, "cat_name", None),
                     "features": getattr(d, "features", None),
+                    # Activity detection fields
+                    "activity": getattr(d, "activity", None),
+                    "activity_confidence": getattr(d, "activity_confidence", None),
+                    "nearby_objects": getattr(d, "nearby_objects", None),
+                    "contextual_activity": getattr(d, "contextual_activity", None),
+                    "interaction_confidence": getattr(d, "interaction_confidence", None),
                 }
                 for d in detection_result.detections
             ]
