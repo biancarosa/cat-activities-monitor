@@ -11,8 +11,8 @@ from .training_service import TrainingService
 
 __all__ = [
     "ConfigService",
-    "DatabaseService", 
+    "DatabaseService",
     "DetectionService",
     "ImageService",
-    "TrainingService"
-] 
+    "TrainingService",
+]

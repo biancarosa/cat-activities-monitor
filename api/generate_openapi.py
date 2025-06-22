@@ -14,24 +14,24 @@ from main import app
 
 def generate_openapi_docs():
     """Generate OpenAPI documentation and save to files."""
-    
+
     # Get the OpenAPI schema from FastAPI
     openapi_schema = app.openapi()
-    
+
     # Create docs directory if it doesn't exist
     docs_dir = Path("docs")
     docs_dir.mkdir(exist_ok=True)
-    
+
     # Save as JSON
     json_path = docs_dir / "openapi.json"
     with open(json_path, "w", encoding="utf-8") as f:
         json.dump(openapi_schema, f, indent=2, ensure_ascii=False)
-    
+
     # Save as YAML
     yaml_path = docs_dir / "openapi.yaml"
     with open(yaml_path, "w", encoding="utf-8") as f:
         yaml.dump(openapi_schema, f, default_flow_style=False, allow_unicode=True)
-    
+
     # Generate a simple HTML documentation page
     html_content = """
 <!DOCTYPE html>
@@ -85,11 +85,11 @@ def generate_openapi_docs():
 </body>
 </html>
     """
-    
+
     html_path = docs_dir / "index.html"
     with open(html_path, "w", encoding="utf-8") as f:
         f.write(html_content)
-    
+
     print("✅ OpenAPI documentation generated successfully!")
     print(f"📁 Files created in {docs_dir.absolute()}:")
     print(f"   - openapi.json ({json_path.stat().st_size} bytes)")
@@ -101,4 +101,4 @@ def generate_openapi_docs():
 
 
 if __name__ == "__main__":
-    generate_openapi_docs() 
+    generate_openapi_docs()
