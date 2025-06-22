@@ -105,7 +105,7 @@ export default function ImageGallery({ className = '', onStatsUpdate }: ImageGal
   const handlePageChange = useCallback(async (page: number) => {
     setCurrentPage(page);
     await fetchImages(page);
-  }, []);
+  }, [fetchImages]);
 
   const handleFetchNew = async () => {
     try {
@@ -209,7 +209,7 @@ export default function ImageGallery({ className = '', onStatsUpdate }: ImageGal
         window.removeEventListener('apiUrlChanged', handleApiUrlChanged);
       };
     }
-  }, [configLoaded]); // Removed fetchImages from dependency array to prevent infinite loop
+  }, [configLoaded, fetchImages]);
 
   // Filter images by source
   const filteredImages = selectedSource === 'all' 
