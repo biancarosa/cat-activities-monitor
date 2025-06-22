@@ -1372,6 +1372,106 @@
           }
         }
       }
+    },
+    "/maintenance/cleanup/status": {
+      "get": {
+        "tags": [
+          "maintenance"
+        ],
+        "summary": "Get Image Cleanup Status",
+        "description": "Get current status of image cleanup configuration and statistics.",
+        "operationId": "get_cleanup_status_maintenance_cleanup_status_get",
+        "responses": {
+          "200": {
+            "description": "Image cleanup status and configuration",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/maintenance/cleanup/run": {
+      "post": {
+        "tags": [
+          "maintenance"
+        ],
+        "summary": "Run Image Cleanup Manually",
+        "description": "Manually trigger image cleanup process to delete old images and update database records.",
+        "operationId": "run_cleanup_manual_maintenance_cleanup_run_post",
+        "responses": {
+          "200": {
+            "description": "Cleanup operation results",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/maintenance/cleanup/config": {
+      "put": {
+        "tags": [
+          "maintenance"
+        ],
+        "summary": "Update Cleanup Configuration",
+        "description": "Update image cleanup configuration such as retention days.",
+        "operationId": "update_cleanup_config_maintenance_cleanup_config_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CleanupConfigRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Updated cleanup configuration",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/maintenance/database/orphaned-records": {
+      "get": {
+        "tags": [
+          "maintenance"
+        ],
+        "summary": "Get Orphaned Database Records",
+        "description": "Get database records that reference missing image files (image_filename is null).",
+        "operationId": "get_orphaned_records_maintenance_database_orphaned_records_get",
+        "responses": {
+          "200": {
+            "description": "Statistics about orphaned database records",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -1448,6 +1548,17 @@
         ],
         "title": "CatActivity",
         "description": "Enumeration of detectable cat activities.\n\nThese activities are recognized through pose analysis and behavioral patterns."
+      },
+      "CleanupConfigRequest": {
+        "properties": {
+          "retention_days": {
+            "type": "integer",
+            "title": "Retention Days",
+            "default": 3
+          }
+        },
+        "type": "object",
+        "title": "CleanupConfigRequest"
       },
       "CreateCatProfileRequest": {
         "properties": {
@@ -1627,6 +1738,87 @@
               "suggestion_threshold": 0.6,
               "top_matches": []
             }
+          },
+          "activity": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Activity",
+            "description": "Detected cat activity",
+            "example": "sleeping"
+          },
+          "activity_confidence": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Activity Confidence",
+            "description": "Confidence score for the detected activity",
+            "example": 0.85
+          },
+          "nearby_objects": {
+            "anyOf": [
+              {
+                "items": {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nearby Objects",
+            "description": "Objects detected near this cat",
+            "example": [
+              {
+                "confidence": 0.89,
+                "distance": 25.5,
+                "interaction_type": "eating",
+                "object_class": "bowl",
+                "relationship": "touching"
+              }
+            ]
+          },
+          "contextual_activity": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contextual Activity",
+            "description": "Activity inferred from object interactions",
+            "example": "eating_from_bowl"
+          },
+          "interaction_confidence": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Interaction Confidence",
+            "description": "Confidence in the object interaction detection",
+            "example": 0.85
           }
         },
         "type": "object",
@@ -2148,6 +2340,10 @@
     {
       "name": "cats",
       "description": "Cat profile management endpoints for creating, updating, and tracking individual cats."
+    },
+    {
+      "name": "maintenance",
+      "description": "System maintenance endpoints for image cleanup, database management, and system optimization."
     }
   ]
 }
