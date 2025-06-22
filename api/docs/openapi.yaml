@@ -70,6 +70,14 @@ components:
       - grooming
       title: CatActivity
       type: string
+    CleanupConfigRequest:
+      properties:
+        retention_days:
+          default: 3
+          title: Retention Days
+          type: integer
+      title: CleanupConfigRequest
+      type: object
     CreateCatProfileRequest:
       description: Request model for creating a new cat profile.
       properties:
@@ -123,6 +131,22 @@ components:
 
         and bounding box coordinates.'
       properties:
+        activity:
+          anyOf:
+          - type: string
+          - type: 'null'
+          description: Detected cat activity
+          example: sleeping
+          title: Activity
+        activity_confidence:
+          anyOf:
+          - maximum: 1.0
+            minimum: 0.0
+            type: number
+          - type: 'null'
+          description: Confidence score for the detected activity
+          example: 0.85
+          title: Activity Confidence
         bounding_box:
           additionalProperties:
             type: number
@@ -168,6 +192,13 @@ components:
           minimum: 0.0
           title: Confidence
           type: number
+        contextual_activity:
+          anyOf:
+          - type: string
+          - type: 'null'
+          description: Activity inferred from object interactions
+          example: eating_from_bowl
+          title: Contextual Activity
         features:
           anyOf:
           - items:
@@ -198,6 +229,30 @@ components:
             suggestion_threshold: 0.6
             top_matches: []
           title: Identification Suggestion
+        interaction_confidence:
+          anyOf:
+          - maximum: 1.0
+            minimum: 0.0
+            type: number
+          - type: 'null'
+          description: Confidence in the object interaction detection
+          example: 0.85
+          title: Interaction Confidence
+        nearby_objects:
+          anyOf:
+          - items:
+              additionalProperties: true
+              type: object
+            type: array
+          - type: 'null'
+          description: Objects detected near this cat
+          example:
+          - confidence: 0.89
+            distance: 25.5
+            interaction_type: eating
+            object_class: bowl
+            relationship: touching
+          title: Nearby Objects
       required:
       - class_id
       - class_name
@@ -1180,6 +1235,72 @@ paths:
       summary: Get Feedback Details
       tags:
       - feedback
+  /maintenance/cleanup/config:
+    put:
+      description: Update image cleanup configuration such as retention days.
+      operationId: update_cleanup_config_maintenance_cleanup_config_put
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CleanupConfigRequest'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: {}
+          description: Updated cleanup configuration
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      summary: Update Cleanup Configuration
+      tags:
+      - maintenance
+  /maintenance/cleanup/run:
+    post:
+      description: Manually trigger image cleanup process to delete old images and
+        update database records.
+      operationId: run_cleanup_manual_maintenance_cleanup_run_post
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: {}
+          description: Cleanup operation results
+      summary: Run Image Cleanup Manually
+      tags:
+      - maintenance
+  /maintenance/cleanup/status:
+    get:
+      description: Get current status of image cleanup configuration and statistics.
+      operationId: get_cleanup_status_maintenance_cleanup_status_get
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: {}
+          description: Image cleanup status and configuration
+      summary: Get Image Cleanup Status
+      tags:
+      - maintenance
+  /maintenance/database/orphaned-records:
+    get:
+      description: Get database records that reference missing image files (image_filename
+        is null).
+      operationId: get_orphaned_records_maintenance_database_orphaned_records_get
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: {}
+          description: Statistics about orphaned database records
+      summary: Get Orphaned Database Records
+      tags:
+      - maintenance
   /system/config:
     get:
       description: Retrieve the current system configuration including camera sources,
@@ -1474,3 +1595,6 @@ tags:
 - description: Cat profile management endpoints for creating, updating, and tracking
     individual cats.
   name: cats
+- description: System maintenance endpoints for image cleanup, database management,
+    and system optimization.
+  name: maintenance

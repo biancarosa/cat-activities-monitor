@@ -8,6 +8,7 @@ from .database_service import DatabaseService
 from .detection_service import DetectionService
 from .image_service import ImageService
 from .training_service import TrainingService
+from .image_cleanup_service import ImageCleanupService
 
 __all__ = [
     "ConfigService",
@@ -15,4 +16,5 @@ __all__ = [
     "DetectionService",
     "ImageService",
     "TrainingService",
+    "ImageCleanupService",
 ]
