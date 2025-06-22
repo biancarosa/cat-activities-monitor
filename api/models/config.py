@@ -2,8 +2,8 @@
 Configuration models.
 """
 
-from typing import List
-from pydantic import BaseModel, HttpUrl, ConfigDict
+from typing import List, Dict, Any, Optional
+from pydantic import BaseModel, HttpUrl, ConfigDict, Field
 
 
 class ImageConfig(BaseModel):
@@ -27,6 +27,18 @@ class ChangeDetectionConfig(BaseModel):
     activity_change_triggers: bool = True  # Save when activity changes
 
 
+class ActivityDetectionConfig(BaseModel):
+    """Configuration for contextual activity detection."""
+    enabled: bool = True
+    detection_mode: str = "contextual"  # rule_based, contextual, pose_based
+    interaction_thresholds: Dict[str, float] = {
+        "proximity_distance": 100.0,
+        "overlap_threshold": 0.1,
+        "eating_confidence": 0.8,
+        "sleeping_confidence": 0.7
+    }
+
+
 class YOLOConfig(BaseModel):
     model: str = "ml_models/yolo11l.pt"  # Using yolo11l for better performance
     confidence_threshold: float = 0.01   # Ultra-sensitive for detecting both cats
@@ -34,9 +46,11 @@ class YOLOConfig(BaseModel):
     max_detections: int = 1000          # High max detections to catch multiple cats
     image_size: int = 1280              # Larger input size for more accuracy
     target_classes: List[int] = [15, 16]  # 15=cat, 16=dog (YOLO sometimes confuses cats/dogs)
+    contextual_objects: List[int] = [45, 56, 57, 59, 60, 61, 58, 71]  # bowl, chair, couch, bed, dining_table, toilet, potted_plant, sink
     save_detection_images: bool = True   # Save images with bounding boxes for debugging
     detection_image_path: str = "./detections"
     change_detection: ChangeDetectionConfig = ChangeDetectionConfig()
+    activity_detection: ActivityDetectionConfig = ActivityDetectionConfig()
 
 
 class GlobalConfig(BaseModel):
@@ -47,8 +61,8 @@ class GlobalConfig(BaseModel):
 
 
 class Config(BaseModel):
-    model_config = ConfigDict(fields={'global_': 'global'})
+    model_config = ConfigDict()
     
     app: AppConfig = AppConfig()        # Provide default
     images: List[ImageConfig] = []      # Default to empty list, will be populated from config file
-    global_: GlobalConfig = GlobalConfig() 
+    global_: GlobalConfig = Field(default=GlobalConfig(), alias='global') 

@@ -19,6 +19,7 @@ from models import (
 from services import DatabaseService
 from services.cat_identification_service import CatIdentificationService
 from ml_pipeline import MLDetectionPipeline, YOLODetectionProcess, FeatureExtractionProcess
+from ml_pipeline.contextual_activity_detection import ContextualActivityDetectionProcess
 from utils import BOUNDING_BOX_COLORS
 logger = logging.getLogger(__name__)
 
@@ -45,7 +46,7 @@ class DetectionService:
         return self.box_colors[cat_index % len(self.box_colors)]
     
     async def initialize_ml_pipeline(self, yolo_config: YOLOConfig) -> MLDetectionPipeline:
-        """Initialize ML pipeline with YOLO detection and feature extraction."""
+        """Initialize ML pipeline with YOLO detection, feature extraction, and contextual activity detection."""
         try:
             logger.info("Initializing ML detection pipeline")
             
@@ -55,13 +56,18 @@ class DetectionService:
             # Create feature extraction process
             feature_process = FeatureExtractionProcess()
             
-            # Create pipeline with both processes
-            self.ml_pipeline = MLDetectionPipeline([yolo_process, feature_process])
+            # Create contextual activity detection process
+            activity_process = ContextualActivityDetectionProcess(config={
+                'activity_detection': yolo_config.activity_detection.model_dump() if hasattr(yolo_config, 'activity_detection') else {}
+            })
+            
+            # Create pipeline with all processes (YOLO -> Features -> Activity Detection)
+            self.ml_pipeline = MLDetectionPipeline([yolo_process, feature_process, activity_process])
             
             # Initialize the pipeline
             await self.ml_pipeline.initialize()
             
-            logger.info("ML detection pipeline initialized successfully")
+            logger.info("ML detection pipeline initialized successfully with contextual activity detection")
             return self.ml_pipeline
             
         except Exception as e:

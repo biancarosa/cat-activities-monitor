@@ -4,11 +4,11 @@ Contains all Pydantic models and data structures.
 """
 
 from .config import (
-    ImageConfig, AppConfig, ChangeDetectionConfig, YOLOConfig, 
+    ImageConfig, AppConfig, ChangeDetectionConfig, ActivityDetectionConfig, YOLOConfig, 
     GlobalConfig, Config
 )
 from .detection import (
-    Detection, ImageDetections
+    Detection, ImageDetections, CatActivity
 )
 from .feedback import (
     BoundingBox, FeedbackAnnotation, ImageFeedback, TrainingDataExport,
@@ -18,11 +18,11 @@ from .cat import CatProfile, CreateCatProfileRequest, UpdateCatProfileRequest
 
 __all__ = [
     # Config models
-    "ImageConfig", "AppConfig", "ChangeDetectionConfig", "YOLOConfig", 
+    "ImageConfig", "AppConfig", "ChangeDetectionConfig", "ActivityDetectionConfig", "YOLOConfig", 
     "GlobalConfig", "Config",
     
     # Detection models  
-    "Detection", "ImageDetections",
+    "Detection", "ImageDetections", "CatActivity",
     
     # Feedback models
     "BoundingBox", "FeedbackAnnotation", "ImageFeedback", "TrainingDataExport",

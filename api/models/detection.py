@@ -76,6 +76,50 @@ class Detection(BaseModel):
             "top_matches": []
         }
     )
+    
+    # Activity detection fields
+    activity: Optional[str] = Field(
+        None,
+        description="Detected cat activity",
+        example="sleeping"
+    )
+    
+    activity_confidence: Optional[float] = Field(
+        None,
+        description="Confidence score for the detected activity",
+        example=0.85,
+        ge=0.0,
+        le=1.0
+    )
+    
+    # Contextual object interaction fields
+    nearby_objects: Optional[List[Dict[str, Any]]] = Field(
+        None,
+        description="Objects detected near this cat",
+        example=[
+            {
+                "object_class": "bowl",
+                "confidence": 0.89,
+                "distance": 25.5,
+                "relationship": "touching",
+                "interaction_type": "eating"
+            }
+        ]
+    )
+    
+    contextual_activity: Optional[str] = Field(
+        None,
+        description="Activity inferred from object interactions",
+        example="eating_from_bowl"
+    )
+    
+    interaction_confidence: Optional[float] = Field(
+        None,
+        description="Confidence in the object interaction detection",
+        example=0.85,
+        ge=0.0,
+        le=1.0
+    )
 
 
 class CatActivity(str, Enum):

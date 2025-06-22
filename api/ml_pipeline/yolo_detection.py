@@ -110,8 +110,9 @@ class YOLODetectionProcess(MLDetectionProcess):
                         confidence = float(box.conf[0])
                         class_name = COCO_CLASSES.get(class_id, f"class_{class_id}")
                         
-                        # Check if it's a target class (cat, dog, etc.)
-                        if class_id in self.yolo_config.target_classes:
+                        # Check if it's a target class (cat, dog, etc.) or contextual object
+                        contextual_objects = getattr(self.yolo_config, 'contextual_objects', [])
+                        if class_id in self.yolo_config.target_classes or class_id in contextual_objects:
                             # Get bounding box coordinates
                             x1, y1, x2, y2 = box.xyxy[0].tolist()
                             
@@ -127,7 +128,7 @@ class YOLODetectionProcess(MLDetectionProcess):
                                     "width": x2 - x1,
                                     "height": y2 - y1
                                 },
-                                cat_uuid=str(uuid.uuid4())  # Generate UUID for each detection
+                                cat_uuid=str(uuid.uuid4()) if class_id in self.yolo_config.target_classes else None  # Only cats get UUIDs
                             )
                             
                             target_detections.append(detection)

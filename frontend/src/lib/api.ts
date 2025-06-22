@@ -83,6 +83,18 @@ export interface DetectionImage {
       is_confident_match: boolean;
       is_new_cat: boolean;
     };
+    // Activity detection fields
+    activity?: string;
+    activity_confidence?: number;
+    nearby_objects?: Array<{
+      object_class: string;
+      confidence: number;
+      distance: number;
+      relationship: string;
+      interaction_type: string;
+    }>;
+    contextual_activity?: string;
+    interaction_confidence?: number;
   }>;
   annotation_summary: string[];
 }
