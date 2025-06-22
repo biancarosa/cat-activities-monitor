@@ -19,8 +19,7 @@ import {
   Globe,
   Save,
   RotateCcw,
-  Brain,
-  Download,
+  Brain,  
   Play,
   BarChart3,
   Zap,
@@ -45,7 +44,6 @@ export default function SettingsPage() {
   const [apiUrlError, setApiUrlError] = useState<string | null>(null);
 
   // Training state
-  const [exporting, setExporting] = useState(false);
   const [training, setTraining] = useState(false);
   const [switchingModel, setSwitchingModel] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -135,20 +133,6 @@ export default function SettingsPage() {
 
   const isApiUrlChanged = tempApiUrl !== apiUrl;
 
-  const handleExportTrainingData = async () => {
-    try {
-      setExporting(true);
-      setError(null);
-      setSuccessMessage(null);
-      const result = await trainingApi.exportData();
-      setSuccessMessage(`Training data exported successfully! ${result.images_count} images with ${result.total_annotations} annotations.`);
-      await fetchData(); // Refresh training status
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to export training data');
-    } finally {
-      setExporting(false);
-    }
-  };
 
   const handleStartTraining = async () => {
     try {
@@ -592,14 +576,6 @@ export default function SettingsPage() {
 
                 {/* Training Actions */}
                 <div className="flex flex-wrap gap-3 pt-4 border-t">
-                  <Button 
-                    onClick={handleExportTrainingData}
-                    disabled={exporting || !trainingStatus.ready_for_training}
-                    variant="outline"
-                  >
-                    <Download className="h-4 w-4 mr-2" />
-                    {exporting ? 'Exporting...' : 'Export Training Data'}
-                  </Button>
                   <Button 
                     onClick={handleStartTraining}
                     disabled={training || !trainingStatus.ready_for_training}

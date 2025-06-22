@@ -10,15 +10,15 @@ from . import (
     detection_routes,
     feedback_routes,
     training_routes,
-    cat_routes
+    cat_routes,
 )
 
 __all__ = [
     "main_routes",
     "system_routes",
-    "camera_routes", 
+    "camera_routes",
     "detection_routes",
     "feedback_routes",
     "training_routes",
-    "cat_routes"
-] 
+    "cat_routes",
+]

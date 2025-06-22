@@ -83,6 +83,18 @@ export interface DetectionImage {
       is_confident_match: boolean;
       is_new_cat: boolean;
     };
+    // Activity detection fields
+    activity?: string;
+    activity_confidence?: number;
+    nearby_objects?: Array<{
+      object_class: string;
+      confidence: number;
+      distance: number;
+      relationship: string;
+      interaction_type: string;
+    }>;
+    contextual_activity?: string;
+    interaction_confidence?: number;
   }>;
   annotation_summary: string[];
 }
@@ -323,13 +335,6 @@ class ApiClient {
   async deleteFeedback(feedbackId: string): Promise<{ message: string; deleted_feedback_id: string }> {
     return this.request(`/feedback/${encodeURIComponent(feedbackId)}`, {
       method: 'DELETE',
-    });
-  }
-
-  // Training endpoints
-  async exportTrainingData(): Promise<TrainingDataExportResult> {
-    return this.request('/training/export', {
-      method: 'POST',
     });
   }
 
@@ -585,7 +590,6 @@ export const feedbackApi = {
 };
 
 export const trainingApi = {
-  exportData: () => apiClient.exportTrainingData(),
   retrain: (request?: ModelRetrainRequest) => apiClient.retrainModel(request),
   getStatus: () => apiClient.getTrainingStatus(),
   switchModel: (model: string) => apiClient.switchModel(model),

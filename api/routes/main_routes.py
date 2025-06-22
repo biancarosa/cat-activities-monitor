@@ -11,7 +11,8 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-@router.get("/api", 
+@router.get(
+    "/api",
     summary="Get API Information",
     description="Returns basic information about the Cat Activities Monitor API including version and available endpoints.",
     response_description="API metadata and endpoint information",
@@ -31,13 +32,14 @@ router = APIRouter()
                             "activities": "/activities/summary",
                             "feedback": "/feedback",
                             "training": "/training/status",
-                            "cats": "/cats"
-                        }
+                            "cats": "/cats",
+                        },
                     }
                 }
-            }
+            },
         }
-    })
+    },
+)
 async def api_root():
     """API information and version."""
     return {
@@ -46,11 +48,11 @@ async def api_root():
         "description": "AI-powered cat monitoring system with YOLO object detection and activity analysis",
         "endpoints": {
             "system": "/system/status",
-            "cameras": "/cameras", 
+            "cameras": "/cameras",
             "detections": "/detections/images",
             "activities": "/activities/summary",
             "feedback": "/feedback",
             "training": "/training/status",
-            "cats": "/cats"
-        }
-    } 
+            "cats": "/cats",
+        },
+    }

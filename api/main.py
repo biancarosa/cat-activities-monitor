@@ -14,10 +14,10 @@ from fastapi.staticfiles import StaticFiles
 # Import services
 from services import (
     ConfigService,
-    DatabaseService, 
+    DatabaseService,
     DetectionService,
     ImageService,
-    TrainingService
+    TrainingService,
 )
 from services.cat_identification_service import CatIdentificationService
 
@@ -30,17 +30,14 @@ from routes import (
     activity_routes,
     feedback_routes,
     training_routes,
-    cat_routes
+    cat_routes,
 )
 
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    handlers=[
-        logging.FileHandler("api.log"),
-        logging.StreamHandler()
-    ]
+    handlers=[logging.FileHandler("api.log"), logging.StreamHandler()],
 )
 logger = logging.getLogger(__name__)
 
@@ -52,38 +49,41 @@ shutdown_event = asyncio.Event()
 if not os.path.exists("detections"):
     os.makedirs("detections")
 
+
 async def background_image_fetcher(app: FastAPI):
     """Background task to fetch images periodically."""
     logger.info("🔄 Starting background image fetcher")
-    
+
     while not shutdown_event.is_set():
         try:
             config_service = app.state.config_service
             image_service = app.state.image_service
-            
+
             config = config_service.config
             if config:
                 enabled_images = config_service.get_enabled_images()
-                
+
                 if enabled_images:
                     logger.info(f"🔍 Fetching {len(enabled_images)} enabled images")
-                    
+
                     # Check for shutdown before starting fetch
                     if shutdown_event.is_set():
                         break
-                    
+
                     results = await image_service.fetch_all_images(
                         enabled_images,
                         config.global_.ml_model_config,
                         config.global_.max_concurrent_fetches,
-                        config.global_.timeout_seconds
+                        config.global_.timeout_seconds,
                     )
-                    
-                    successful = sum(1 for r in results if r['success'])
-                    logger.info(f"✅ Fetch completed: {successful}/{len(results)} successful")
+
+                    successful = sum(1 for r in results if r["success"])
+                    logger.info(
+                        f"✅ Fetch completed: {successful}/{len(results)} successful"
+                    )
                 else:
                     logger.debug("No enabled images to fetch")
-            
+
             # Wait for the default interval or until shutdown
             try:
                 interval = config.global_.default_interval_seconds if config else 60
@@ -91,7 +91,7 @@ async def background_image_fetcher(app: FastAPI):
                 break  # If shutdown_event is set, exit the loop
             except asyncio.TimeoutError:
                 continue  # Timeout reached, continue with next fetch cycle
-                
+
         except Exception as e:
             logger.error(f"Error in background image fetcher: {e}")
             try:
@@ -99,7 +99,7 @@ async def background_image_fetcher(app: FastAPI):
                 break
             except asyncio.TimeoutError:
                 continue
-    
+
     logger.info("🔄 Background image fetcher stopped")
 
 
@@ -107,43 +107,45 @@ async def background_image_fetcher(app: FastAPI):
 async def lifespan(app: FastAPI):
     """Manage application lifecycle."""
     global background_task
-    
+
     logger.info("🚀 Starting Cat Activities Monitor API")
-    
+
     try:
         # Initialize services in dependency order
         config_service = ConfigService()
         database_service = DatabaseService()
         detection_service = DetectionService(database_service)
-        
+
         # Initialize async database
         await database_service.init_database()
         logger.info("💾 Database initialized")
-        
+
         # Initialize cat identification service
         cat_identification_service = CatIdentificationService(database_service)
-        
+
         # Try to load trained model for cat identification
         model_loaded = await cat_identification_service.load_trained_model()
         if model_loaded:
             logger.info("🧠 Cat identification model loaded successfully")
         else:
-            logger.info("ℹ️ No trained cat identification model found - using similarity matching only")
-        
-        # TrainingService depends on DatabaseService  
+            logger.info(
+                "ℹ️ No trained cat identification model found - using similarity matching only"
+            )
+
+        # TrainingService depends on DatabaseService
         training_service = TrainingService(database_service)
-        
+
         # ImageService depends on DetectionService and DatabaseService
         image_service = ImageService(detection_service, database_service)
-        
+
         # Load initial configuration
         config = config_service.load_config()
         logger.info(f"📋 Configuration loaded: {len(config.images)} image sources")
-        
+
         # Initialize ML pipeline
         await detection_service.initialize_ml_pipeline(config.global_.ml_model_config)
         logger.info(f"🤖 ML pipeline loaded: {config.global_.ml_model_config.model}")
-        
+
         # Store services in app state for dependency injection
         app.state.config_service = config_service
         app.state.database_service = database_service
@@ -151,40 +153,42 @@ async def lifespan(app: FastAPI):
         app.state.image_service = image_service
         app.state.training_service = training_service
         app.state.cat_identification_service = cat_identification_service
-        
+
         # Start background image fetching task
         background_task = asyncio.create_task(background_image_fetcher(app))
-        
+
         # Remove signal handlers since uvicorn handles them
         # Let uvicorn handle signals and trigger lifespan shutdown
-        
+
         logger.info("✅ Cat Activities Monitor API startup completed")
-        
+
         yield
-        
+
     except Exception as e:
         logger.error(f"❌ Error during startup: {e}")
         raise
     finally:
         # Cleanup
         logger.info("🔄 Shutting down Cat Activities Monitor API")
-        
+
         # Signal background task to stop
         shutdown_event.set()
-        
+
         # Wait for background task to complete with shorter timeout
         if background_task and not background_task.done():
             try:
                 await asyncio.wait_for(background_task, timeout=5.0)
                 logger.info("✅ Background task stopped gracefully")
             except asyncio.TimeoutError:
-                logger.warning("⚠️ Background task did not stop gracefully, cancelling forcefully")
+                logger.warning(
+                    "⚠️ Background task did not stop gracefully, cancelling forcefully"
+                )
                 background_task.cancel()
                 try:
                     await asyncio.wait_for(background_task, timeout=2.0)
                 except (asyncio.CancelledError, asyncio.TimeoutError):
                     logger.warning("⚠️ Background task cancelled")
-        
+
         logger.info("👋 Cat Activities Monitor API shutdown completed")
 
 
@@ -200,48 +204,42 @@ app = FastAPI(
     openapi_tags=[
         {
             "name": "main",
-            "description": "Main application endpoints including root interface and API information."
+            "description": "Main application endpoints including root interface and API information.",
         },
         {
             "name": "system",
-            "description": "System administration endpoints for status, configuration, health checks, and logs."
+            "description": "System administration endpoints for status, configuration, health checks, and logs.",
         },
         {
             "name": "cameras",
-            "description": "Camera and image source management endpoints for listing cameras and fetching images."
+            "description": "Camera and image source management endpoints for listing cameras and fetching images.",
         },
         {
             "name": "detections",
-            "description": "Detection results and analysis endpoints for retrieving detection data and images."
+            "description": "Detection results and analysis endpoints for retrieving detection data and images.",
         },
         {
             "name": "activities",
-            "description": "Activity analysis endpoints for tracking and summarizing cat activities across cameras."
+            "description": "Activity analysis endpoints for tracking and summarizing cat activities across cameras.",
         },
         {
             "name": "feedback",
-            "description": "Feedback system endpoints for submitting corrections and improvements to enhance model accuracy."
+            "description": "Feedback system endpoints for submitting corrections and improvements to enhance model accuracy.",
         },
         {
             "name": "training",
-            "description": "Model training and management endpoints for custom model creation and switching between models."
+            "description": "Model training and management endpoints for custom model creation and switching between models.",
         },
         {
             "name": "cats",
-            "description": "Cat profile management endpoints for creating, updating, and tracking individual cats."
-        }
+            "description": "Cat profile management endpoints for creating, updating, and tracking individual cats.",
+        },
     ],
     servers=[
-        {
-            "url": "http://localhost:8000",
-            "description": "Development server"
-        },
-        {
-            "url": "https://your-domain.com",
-            "description": "Production server"
-        }
+        {"url": "http://localhost:8000", "description": "Development server"},
+        {"url": "https://your-domain.com", "description": "Production server"},
     ],
-    lifespan=lifespan
+    lifespan=lifespan,
 )
 
 # Add CORS middleware
@@ -267,9 +265,9 @@ app.include_router(cat_routes.router, tags=["cats"])
 
 if __name__ == "__main__":
     import uvicorn
-    
+
     logger.info("🚀 Starting Cat Activities Monitor API")
-    
+
     try:
         uvicorn.run(
             "main:app",
@@ -277,11 +275,11 @@ if __name__ == "__main__":
             port=8000,
             reload=True,  # Enable reload for development
             log_level="info",
-            access_log=True
+            access_log=True,
         )
     except KeyboardInterrupt:
         logger.info("🛑 Server interrupted by user")
     except Exception as e:
         logger.error(f"❌ Server error: {e}")
     finally:
-        logger.info("👋 Server shutdown complete") 
+        logger.info("👋 Server shutdown complete")

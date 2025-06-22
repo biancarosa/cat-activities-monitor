@@ -12,9 +12,9 @@ from .feature_clustering_trainer import FeatureClusteringTrainer
 from .yolo_trainer import YOLOTrainer
 
 __all__ = [
-    'MLTrainingPipeline',
-    'BaseTrainer',
-    'CatIdentificationTrainer', 
-    'FeatureClusteringTrainer',
-    'YOLOTrainer'
+    "MLTrainingPipeline",
+    "BaseTrainer",
+    "CatIdentificationTrainer",
+    "FeatureClusteringTrainer",
+    "YOLOTrainer",
 ]

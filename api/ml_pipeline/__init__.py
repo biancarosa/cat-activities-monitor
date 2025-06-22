@@ -11,8 +11,8 @@ from .yolo_detection import YOLODetectionProcess
 from .feature_extraction import FeatureExtractionProcess
 
 __all__ = [
-    'MLDetectionPipeline',
-    'MLDetectionProcess', 
-    'YOLODetectionProcess',
-    'FeatureExtractionProcess'
+    "MLDetectionPipeline",
+    "MLDetectionProcess",
+    "YOLODetectionProcess",
+    "FeatureExtractionProcess",
 ]

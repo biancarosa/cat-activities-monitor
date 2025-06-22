@@ -317,9 +317,9 @@
                   "url": "http://camera1.local/snapshot.jpg",
                   "success": true,
                   "detection": {
-                    "detected": true,
+                    "cat_detected": true,
                     "confidence": 0.89,
-                    "count": 2,
+                    "cats_count": 2,
                     "detections": [
                       {
                         "class_id": 15,
@@ -334,9 +334,10 @@
                         }
                       }
                     ],
-                    "total_animals": 2,
+                    "total_cats": 2,
                     "activities": []
-                  }
+                  },
+                  "data_source": "postgresql_database"
                 }
               }
             }
@@ -385,8 +386,8 @@
                       "camera_name": "living_room",
                       "success": true,
                       "detection": {
-                        "detected": true,
-                        "count": 2
+                        "cat_detected": true,
+                        "cats_count": 2
                       }
                     },
                     {
@@ -404,68 +405,6 @@
           },
           "500": {
             "description": "Internal server error"
-          }
-        }
-      }
-    },
-    "/detections/database/status": {
-      "get": {
-        "tags": [
-          "detections"
-        ],
-        "summary": "Get Detection Database Status",
-        "description": "Get detection database status and statistics including recent activity and detection counts.",
-        "operationId": "get_detection_database_status_detections_database_status_get",
-        "responses": {
-          "200": {
-            "description": "Detection database status and statistics",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          }
-        }
-      }
-    },
-    "/detections/database/cleanup": {
-      "post": {
-        "tags": [
-          "detections"
-        ],
-        "summary": "Clean Up Detection Database",
-        "description": "Clean up old detection results from database, keeping only recent records.",
-        "operationId": "cleanup_detection_database_detections_database_cleanup_post",
-        "parameters": [
-          {
-            "name": "keep_days",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "default": 7,
-              "title": "Keep Days"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Database cleanup results",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
           }
         }
       }
@@ -1032,37 +971,20 @@
     "/training/status": {
       "get": {
         "tags": [
+          "training",
           "training"
         ],
         "summary": "Get Training Status",
-        "description": "Get training status and available models.",
+        "description": "Get comprehensive training status for all training types.",
         "operationId": "get_training_status_training_status_get",
         "responses": {
           "200": {
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
-              }
-            }
-          }
-        }
-      }
-    },
-    "/training/export": {
-      "post": {
-        "tags": [
-          "training"
-        ],
-        "summary": "Export Training Data",
-        "description": "Export feedback data in YOLO format that preserves COCO classes and adds metadata.",
-        "operationId": "export_training_data_training_export_post",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/TrainingStatusResponse"
+                }
               }
             }
           }
@@ -1072,17 +994,28 @@
     "/training/retrain": {
       "post": {
         "tags": [
+          "training",
           "training"
         ],
-        "summary": "Retrain Model",
-        "description": "Model retraining that preserves COCO classes and adds cat identification capabilities through fine-tuning.",
-        "operationId": "retrain_model_training_retrain_post",
+        "summary": "Retrain Models",
+        "description": "Train models using the unified training pipeline.\n\nThis endpoint can train YOLO object detection models, cat identification\nmodels, or both using the same feedback data.",
+        "operationId": "retrain_models_training_retrain_post",
         "requestBody": {
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/ModelRetrainRequest",
-                "default": {}
+                "$ref": "#/components/schemas/UnifiedTrainingRequest",
+                "default": {
+                  "train_yolo": true,
+                  "train_cat_identification": true,
+                  "include_clustering": true,
+                  "parallel_training": false,
+                  "yolo_config": {
+                    "epochs": 50,
+                    "batch_size": 16,
+                    "base_model": "yolo11l.pt"
+                  }
+                }
               }
             }
           }
@@ -1092,7 +1025,11 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Retrain Models Training Retrain Post"
+                }
               }
             }
           },
@@ -1112,6 +1049,7 @@
     "/training/switch-model": {
       "post": {
         "tags": [
+          "training",
           "training"
         ],
         "summary": "Switch Model",
@@ -1122,7 +1060,85 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Switch Model Training Switch Model Post"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/training/cat-identification/suggest": {
+      "post": {
+        "tags": [
+          "training",
+          "training"
+        ],
+        "summary": "Suggest Cat Identifications",
+        "description": "Get cat identification suggestions for feature vectors.\n\nThis endpoint analyzes feature vectors and returns suggestions for which\ncat profiles they might match, along with confidence scores.",
+        "operationId": "suggest_cat_identifications_training_cat_identification_suggest_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "type": "array",
+                  "title": "Response Suggest Cat Identifications Training Cat Identification Suggest Post"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/training/cat-identification/update-profile-features/{cat_profile_uuid}": {
+      "post": {
+        "tags": [
+          "training",
+          "training"
+        ],
+        "summary": "Update Cat Profile Features",
+        "description": "Update a cat profile with new feature vector.\n\nThis endpoint allows updating a cat profile's feature template\nwith new feature data, using ensemble averaging.",
+        "operationId": "update_cat_profile_features_training_cat_identification_update_profile_features__cat_profile_uuid__post",
+        "parameters": [
+          {
+            "name": "cat_profile_uuid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Cat Profile Uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Update Cat Profile Features Training Cat Identification Update Profile Features  Cat Profile Uuid  Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
               }
             }
           }
@@ -1552,6 +1568,65 @@
             "title": "Cat Uuid",
             "description": "Unique identifier for this cat detection",
             "example": "550e8400-e29b-41d4-a716-446655440000"
+          },
+          "cat_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cat Name",
+            "description": "Identified name of the cat (if recognized)",
+            "example": "Chico"
+          },
+          "features": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "number"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Features",
+            "description": "Deep learning feature vector for cat recognition (2048 dimensions)",
+            "example": [
+              0.123,
+              -0.456,
+              0.789
+            ]
+          },
+          "identification_suggestion": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Identification Suggestion",
+            "description": "Cat identification suggestions based on feature matching",
+            "example": {
+              "confidence": 0.85,
+              "is_confident_match": true,
+              "is_new_cat": false,
+              "similarity_threshold": 0.75,
+              "suggested_profile": {
+                "description": "Orange tabby with white paws",
+                "name": "Whiskers",
+                "uuid": "550e8400-e29b-41d4-a716-446655440000"
+              },
+              "suggestion_threshold": 0.6,
+              "top_matches": []
+            }
           }
         },
         "type": "object",
@@ -1650,6 +1725,33 @@
             "title": "Cat Profile Uuid",
             "description": "UUID of the selected cat profile, if provided by the user",
             "example": "550e8400-e29b-41d4-a716-446655440000"
+          },
+          "corrected_class_id": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Corrected Class Id",
+            "description": "User-corrected YOLO class ID when the original detection was wrong",
+            "example": 16
+          },
+          "corrected_class_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Corrected Class Name",
+            "description": "Human-readable name of the corrected class",
+            "example": "dog"
           }
         },
         "type": "object",
@@ -1760,41 +1862,101 @@
         "title": "ImageFeedback",
         "description": "Feedback data for a single detection image.\n\nContains the original detection results along with user corrections,\nadditions, and annotations for model improvement."
       },
-      "ModelRetrainRequest": {
+      "TrainingStatusResponse": {
         "properties": {
-          "custom_model_name": {
-            "anyOf": [
-              {
-                "type": "string",
-                "maxLength": 100,
-                "pattern": "^[a-zA-Z0-9_-]+$"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Custom Model Name",
-            "description": "Custom name for the retrained model",
-            "example": "retrained_model_v2"
+          "ready_for_training": {
+            "type": "boolean",
+            "title": "Ready For Training"
           },
-          "description": {
-            "anyOf": [
-              {
-                "type": "string",
-                "maxLength": 500
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Description",
-            "description": "Optional description of the retraining process",
-            "example": "Retrained with 500 new annotations focusing on sleeping cats"
+          "yolo_training_ready": {
+            "type": "boolean",
+            "title": "Yolo Training Ready"
+          },
+          "cat_id_training_ready": {
+            "type": "boolean",
+            "title": "Cat Id Training Ready"
+          },
+          "total_feedback": {
+            "type": "integer",
+            "title": "Total Feedback"
+          },
+          "total_annotations": {
+            "type": "integer",
+            "title": "Total Annotations"
+          },
+          "unique_cats": {
+            "type": "integer",
+            "title": "Unique Cats"
+          },
+          "cat_profiles": {
+            "type": "integer",
+            "title": "Cat Profiles"
+          },
+          "available_models": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Available Models"
+          },
+          "requirements": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Requirements"
           }
         },
         "type": "object",
-        "title": "ModelRetrainRequest",
-        "description": "Request model for retraining with custom model name.\n\nUsed to initiate model retraining with feedback data and specify\na custom name for the resulting model."
+        "required": [
+          "ready_for_training",
+          "yolo_training_ready",
+          "cat_id_training_ready",
+          "total_feedback",
+          "total_annotations",
+          "unique_cats",
+          "cat_profiles",
+          "available_models",
+          "requirements"
+        ],
+        "title": "TrainingStatusResponse",
+        "description": "Response for training status."
+      },
+      "UnifiedTrainingRequest": {
+        "properties": {
+          "train_yolo": {
+            "type": "boolean",
+            "title": "Train Yolo",
+            "description": "Whether to train YOLO object detection model",
+            "default": true
+          },
+          "train_cat_identification": {
+            "type": "boolean",
+            "title": "Train Cat Identification",
+            "description": "Whether to train cat identification models",
+            "default": true
+          },
+          "include_clustering": {
+            "type": "boolean",
+            "title": "Include Clustering",
+            "description": "Whether to include clustering analysis",
+            "default": true
+          },
+          "parallel_training": {
+            "type": "boolean",
+            "title": "Parallel Training",
+            "description": "Whether to run trainers in parallel",
+            "default": false
+          },
+          "yolo_config": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Yolo Config",
+            "description": "YOLO training configuration"
+          }
+        },
+        "type": "object",
+        "title": "UnifiedTrainingRequest",
+        "description": "Request for unified training pipeline."
       },
       "UpdateCatProfileRequest": {
         "properties": {

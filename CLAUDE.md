@@ -294,7 +294,6 @@ This ensures all changes are properly tracked and can be reviewed before merging
 - `GET /detections/images` - Fetch all detected images with metadata
 - `POST /cameras/fetch-all` - Trigger new image capture from all cameras
 - `POST /feedback` - Submit human annotations for detections
-- `POST /training/export` - Export training data in YOLO format
 - `POST /training/retrain` - Start model retraining with feedback data
 - `GET /training/status` - Get training status and available models
 - `GET /system/health` - System health check
