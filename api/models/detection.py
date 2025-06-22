@@ -168,5 +168,9 @@ class ImageDetections(BaseModel):
     )
     detections: List[Detection] = Field(
         ..., 
-        description="List of individual detection results"
+        description="List of cat detection results"
+    )
+    contextual_objects: List[Detection] = Field(
+        default_factory=list,
+        description="List of contextual objects (bowls, furniture, etc.) detected for activity analysis"
     )

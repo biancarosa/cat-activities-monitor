@@ -253,7 +253,7 @@ class DetectionService:
             
             # For now, we'll use cat index for colors since cat names are stored in user feedback
             
-            # Draw bounding boxes only for target detections (cats/dogs)
+            # Draw bounding boxes for cats (detections array now only contains cats)
             for cat_index, detection in enumerate(target_detections):
                 bbox = detection.bounding_box
                 x1, y1, x2, y2 = bbox["x1"], bbox["y1"], bbox["x2"], bbox["y2"]
@@ -304,7 +304,7 @@ class DetectionService:
             detection_result: Detection result to enhance with cat identification
         """
         try:
-            # Only process detections that have features
+            # Only process detections that have features (detections array now only contains cats)
             detections_with_features = [
                 d for d in detection_result.detections 
                 if d.features and len(d.features) == 2048

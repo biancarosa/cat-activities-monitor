@@ -99,7 +99,8 @@ class YOLODetectionProcess(MLDetectionProcess):
             )
             
             # Process YOLO results
-            target_detections = []
+            cat_detections = []
+            contextual_objects = []
             max_confidence = 0.0
             
             for result in results:
@@ -111,8 +112,11 @@ class YOLODetectionProcess(MLDetectionProcess):
                         class_name = COCO_CLASSES.get(class_id, f"class_{class_id}")
                         
                         # Check if it's a target class (cat, dog, etc.) or contextual object
-                        contextual_objects = getattr(self.yolo_config, 'contextual_objects', [])
-                        if class_id in self.yolo_config.target_classes or class_id in contextual_objects:
+                        contextual_object_classes = getattr(self.yolo_config, 'contextual_objects', [])
+                        is_cat = class_id in self.yolo_config.target_classes
+                        is_contextual = class_id in contextual_object_classes
+                        
+                        if is_cat or is_contextual:
                             # Get bounding box coordinates
                             x1, y1, x2, y2 = box.xyxy[0].tolist()
                             
@@ -128,22 +132,26 @@ class YOLODetectionProcess(MLDetectionProcess):
                                     "width": x2 - x1,
                                     "height": y2 - y1
                                 },
-                                cat_uuid=str(uuid.uuid4()) if class_id in self.yolo_config.target_classes else None  # Only cats get UUIDs
+                                cat_uuid=str(uuid.uuid4()) if is_cat else None  # Only cats get UUIDs
                             )
                             
-                            target_detections.append(detection)
-                            max_confidence = max(max_confidence, confidence)
+                            if is_cat:
+                                cat_detections.append(detection)
+                                max_confidence = max(max_confidence, confidence)
+                            else:
+                                contextual_objects.append(detection)
             
             # Create updated detection results
             updated_detections = ImageDetections(
-                detected=len(target_detections) > 0,
-                cat_detected=len(target_detections) > 0,
+                detected=len(cat_detections) > 0 or len(contextual_objects) > 0,
+                cat_detected=len(cat_detections) > 0,
                 confidence=max_confidence,
-                cats_count=len(target_detections),
-                detections=target_detections,
+                cats_count=len(cat_detections),
+                detections=cat_detections,
+                contextual_objects=contextual_objects,
             )
             
-            logger.debug(f"YOLO detected {len(target_detections)} cats with max confidence {max_confidence:.3f}")
+            logger.debug(f"YOLO detected {len(cat_detections)} cats and {len(contextual_objects)} contextual objects with max confidence {max_confidence:.3f}")
             
             return updated_detections
             

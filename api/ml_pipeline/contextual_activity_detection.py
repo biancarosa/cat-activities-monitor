@@ -78,12 +78,12 @@ class ContextualActivityDetectionProcess(MLDetectionProcess):
             Updated detection results with activity analysis
         """
         try:
-            if not detections.detections:
+            if not detections.detections and not detections.contextual_objects:
                 return detections
             
-            # Separate cats from contextual objects
-            cats = [d for d in detections.detections if d.class_name in ["cat", "dog"]]
-            objects = [d for d in detections.detections if d.class_id in self.contextual_objects]
+            # Get cats and contextual objects from separated arrays
+            cats = detections.detections  # Only contains cats now
+            objects = detections.contextual_objects  # Only contains contextual objects
             
             logger.debug(f"Processing {len(cats)} cats with {len(objects)} contextual objects")
             
