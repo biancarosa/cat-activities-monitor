@@ -45,6 +45,14 @@ class ActivityDetectionConfig(BaseModel):
     }
 
 
+class ImageCleanupConfig(BaseModel):
+    """Configuration for automated image cleanup."""
+
+    enabled: bool = True
+    retention_days: int = 3  # Number of days to retain image files
+    cleanup_interval_hours: int = 24  # How often to run cleanup (in hours)
+
+
 class YOLOConfig(BaseModel):
     model: str = "ml_models/yolo11l.pt"  # Using yolo11l for better performance
     confidence_threshold: float = 0.01  # Ultra-sensitive for detecting both cats
@@ -75,6 +83,7 @@ class GlobalConfig(BaseModel):
     default_interval_seconds: int = 60
     max_concurrent_fetches: int = 3
     timeout_seconds: int = 30
+    image_cleanup: ImageCleanupConfig = ImageCleanupConfig()
     ml_model_config: YOLOConfig = YOLOConfig()
 
 

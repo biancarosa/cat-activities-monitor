@@ -18,6 +18,7 @@ from services import (
     DetectionService,
     ImageService,
     TrainingService,
+    ImageCleanupService,
 )
 from services.cat_identification_service import CatIdentificationService
 
@@ -31,6 +32,7 @@ from routes import (
     feedback_routes,
     training_routes,
     cat_routes,
+    maintenance_routes,
 )
 
 # Configure logging
@@ -41,8 +43,9 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Global background task
-background_task = None
+# Global background tasks
+background_fetch_task = None
+background_cleanup_task = None
 shutdown_event = asyncio.Event()
 
 # If detection folder doesnt exist, create it
@@ -103,10 +106,71 @@ async def background_image_fetcher(app: FastAPI):
     logger.info("🔄 Background image fetcher stopped")
 
 
+async def background_image_cleanup(app: FastAPI):
+    """Background task to clean up old images periodically."""
+    logger.info("🧹 Starting background image cleanup service")
+
+    # Wait a bit before starting cleanup to let the system initialize
+    try:
+        await asyncio.wait_for(shutdown_event.wait(), timeout=60)
+        return  # If shutdown happened during initial wait, exit
+    except asyncio.TimeoutError:
+        pass  # Continue with cleanup
+
+    while not shutdown_event.is_set():
+        try:
+            config_service = app.state.config_service
+            image_cleanup_service = app.state.image_cleanup_service
+
+            config = config_service.config
+            if config:
+                # Set the detection path from config
+                image_cleanup_service.set_detection_path(
+                    config.global_.ml_model_config.detection_image_path
+                )
+
+                # Run cleanup
+                logger.info("🧹 Running scheduled image cleanup")
+                cleanup_summary = await image_cleanup_service.cleanup_old_images()
+                
+                if cleanup_summary["images_deleted"] > 0 or cleanup_summary["errors"] > 0:
+                    logger.info(
+                        f"🧹 Cleanup completed: {cleanup_summary['images_deleted']} images deleted, "
+                        f"{cleanup_summary['database_records_updated']} records updated, "
+                        f"{cleanup_summary['errors']} errors"
+                    )
+                else:
+                    logger.debug("🧹 Cleanup completed: No old images found")
+
+            # Wait for configured interval before next cleanup, or until shutdown
+            config = config_service.config
+            cleanup_interval_seconds = (
+                config.global_.image_cleanup.cleanup_interval_hours * 3600
+                if config else 86400  # Default to 24 hours if no config
+            )
+            
+            try:
+                await asyncio.wait_for(shutdown_event.wait(), timeout=cleanup_interval_seconds)
+                break  # If shutdown_event is set, exit the loop
+            except asyncio.TimeoutError:
+                continue  # Timeout reached, continue with next cleanup cycle
+
+        except Exception as e:
+            logger.error(f"Error in background image cleanup: {e}")
+            try:
+                # Wait 1 hour before retrying on error
+                await asyncio.wait_for(shutdown_event.wait(), timeout=3600)
+                break
+            except asyncio.TimeoutError:
+                continue
+
+    logger.info("🧹 Background image cleanup service stopped")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Manage application lifecycle."""
-    global background_task
+    global background_fetch_task, background_cleanup_task
 
     logger.info("🚀 Starting Cat Activities Monitor API")
 
@@ -137,10 +201,17 @@ async def lifespan(app: FastAPI):
 
         # ImageService depends on DetectionService and DatabaseService
         image_service = ImageService(detection_service, database_service)
-
+        
         # Load initial configuration
         config = config_service.load_config()
         logger.info(f"📋 Configuration loaded: {len(config.images)} image sources")
+        
+        # ImageCleanupService depends on DatabaseService and uses config values
+        cleanup_config = config.global_.image_cleanup
+        image_cleanup_service = ImageCleanupService(
+            database_service, 
+            retention_days=cleanup_config.retention_days
+        )
 
         # Initialize ML pipeline
         await detection_service.initialize_ml_pipeline(config.global_.ml_model_config)
@@ -153,9 +224,18 @@ async def lifespan(app: FastAPI):
         app.state.image_service = image_service
         app.state.training_service = training_service
         app.state.cat_identification_service = cat_identification_service
+        app.state.image_cleanup_service = image_cleanup_service
 
-        # Start background image fetching task
-        background_task = asyncio.create_task(background_image_fetcher(app))
+        # Start background tasks
+        background_fetch_task = asyncio.create_task(background_image_fetcher(app))
+        
+        # Only start cleanup task if enabled in config
+        if cleanup_config.enabled:
+            background_cleanup_task = asyncio.create_task(background_image_cleanup(app))
+            logger.info(f"🧹 Image cleanup service enabled: {cleanup_config.retention_days} days retention, {cleanup_config.cleanup_interval_hours}h interval")
+        else:
+            background_cleanup_task = None
+            logger.info("🧹 Image cleanup service disabled in configuration")
 
         # Remove signal handlers since uvicorn handles them
         # Let uvicorn handle signals and trigger lifespan shutdown
@@ -174,20 +254,28 @@ async def lifespan(app: FastAPI):
         # Signal background task to stop
         shutdown_event.set()
 
-        # Wait for background task to complete with shorter timeout
-        if background_task and not background_task.done():
+        # Wait for background tasks to complete with shorter timeout
+        tasks_to_wait = []
+        if background_fetch_task and not background_fetch_task.done():
+            tasks_to_wait.append(background_fetch_task)
+        if background_cleanup_task and not background_cleanup_task.done():
+            tasks_to_wait.append(background_cleanup_task)
+            
+        if tasks_to_wait:
             try:
-                await asyncio.wait_for(background_task, timeout=5.0)
-                logger.info("✅ Background task stopped gracefully")
+                await asyncio.wait_for(asyncio.gather(*tasks_to_wait, return_exceptions=True), timeout=5.0)
+                logger.info("✅ Background tasks stopped gracefully")
             except asyncio.TimeoutError:
                 logger.warning(
-                    "⚠️ Background task did not stop gracefully, cancelling forcefully"
+                    "⚠️ Background tasks did not stop gracefully, cancelling forcefully"
                 )
-                background_task.cancel()
+                for task in tasks_to_wait:
+                    if not task.done():
+                        task.cancel()
                 try:
-                    await asyncio.wait_for(background_task, timeout=2.0)
+                    await asyncio.wait_for(asyncio.gather(*tasks_to_wait, return_exceptions=True), timeout=2.0)
                 except (asyncio.CancelledError, asyncio.TimeoutError):
-                    logger.warning("⚠️ Background task cancelled")
+                    logger.warning("⚠️ Background tasks cancelled")
 
         logger.info("👋 Cat Activities Monitor API shutdown completed")
 
@@ -234,6 +322,10 @@ app = FastAPI(
             "name": "cats",
             "description": "Cat profile management endpoints for creating, updating, and tracking individual cats.",
         },
+        {
+            "name": "maintenance",
+            "description": "System maintenance endpoints for image cleanup, database management, and system optimization.",
+        },
     ],
     servers=[
         {"url": "http://localhost:8000", "description": "Development server"},
@@ -262,6 +354,7 @@ app.include_router(activity_routes.router, tags=["activities"])
 app.include_router(feedback_routes.router, tags=["feedback"])
 app.include_router(training_routes.router, tags=["training"])
 app.include_router(cat_routes.router, tags=["cats"])
+app.include_router(maintenance_routes.router, tags=["maintenance"])
 
 if __name__ == "__main__":
     import uvicorn
