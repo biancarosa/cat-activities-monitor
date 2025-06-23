@@ -773,6 +773,7 @@ export interface ActivityTimeline {
     locations: Record<string, number>;
     activities: Record<string, number>;
     named_cats: Record<string, number>;
+    cat_activities: Record<string, Record<string, number>>;  // cat_name -> activity -> count
     unique_cats_count: number;
     most_active_location?: string;
     primary_activity?: string;

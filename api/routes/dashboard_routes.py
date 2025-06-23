@@ -456,7 +456,8 @@ async def get_timeline_dashboard(request: Request, hours: int = 24, granularity:
                 "total_cats": 0,
                 "locations": defaultdict(int),
                 "activities": defaultdict(int),
-                "named_cats": defaultdict(int)
+                "named_cats": defaultdict(int),
+                "cat_activities": defaultdict(lambda: defaultdict(int))  # cat_name -> activity -> count
             })
             
             # Determine bucket size
@@ -503,6 +504,8 @@ async def get_timeline_dashboard(request: Request, hours: int = 24, granularity:
                         cat_name = det.get('cat_name')
                         if cat_name:
                             timeline_data[bucket_key]["named_cats"][cat_name] += 1
+                            # Track per-cat activities
+                            timeline_data[bucket_key]["cat_activities"][cat_name][activity] += 1
             
             # Convert to sorted list
             timeline_list = []
@@ -513,6 +516,10 @@ async def get_timeline_dashboard(request: Request, hours: int = 24, granularity:
                 locations_dict = dict(data["locations"])
                 activities_dict = dict(data["activities"])
                 named_cats_dict = dict(data["named_cats"])
+                cat_activities_dict = {
+                    cat_name: dict(activities) 
+                    for cat_name, activities in data["cat_activities"].items()
+                }
                 
                 timeline_item = {
                     "timestamp": bucket_key,
@@ -521,6 +528,7 @@ async def get_timeline_dashboard(request: Request, hours: int = 24, granularity:
                     "locations": locations_dict,
                     "activities": activities_dict,
                     "named_cats": named_cats_dict,
+                    "cat_activities": cat_activities_dict,
                     "unique_cats_count": len(named_cats_dict),
                     "most_active_location": max(locations_dict, key=locations_dict.get) if locations_dict else None,
                     "primary_activity": max(activities_dict, key=activities_dict.get) if activities_dict else None
