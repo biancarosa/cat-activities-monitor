@@ -44,7 +44,7 @@ export default function ImageGallery({ className = '', onStatsUpdate }: ImageGal
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalImages, setTotalImages] = useState(0);
-  const [pageSize] = useState(20);
+  const [pageSize] = useState(9);
   const currentPageRef = useRef(currentPage);
   const isMountedRef = useRef(true);
 
@@ -240,41 +240,6 @@ export default function ImageGallery({ className = '', onStatsUpdate }: ImageGal
       .filter((name, index, arr) => arr.indexOf(name) === index); // Remove duplicates
   };
 
-  const getCatActivities = (image: DetectionImage): Array<{name: string, activity: string, confidence?: number}> => {
-    if (!image.detections) return [];
-    
-    return image.detections
-      .filter(detection => detection.class_name === "cat" && detection.activity)
-      .map(detection => ({
-        name: detection.cat_name || "unidentified",
-        activity: detection.contextual_activity || detection.activity || "unknown",
-        confidence: detection.activity_confidence
-      }));
-  };
-
-  const getActivityBadge = (activity: string, confidence?: number) => {
-    const activityEmojis: Record<string, string> = {
-      'sleeping': '😴',
-      'eating': '🍽️',
-      'playing': '🎾',
-      'grooming': '🧼',
-      'sitting': '🪑',
-      'alert': '👀',
-      'walking': '🚶',
-      'drinking': '💧',
-      'perching': '🏔️',
-      'exploring': '🔍'
-    };
-
-    const emoji = activityEmojis[activity] || '❓';
-    const confidenceText = confidence ? ` (${(confidence * 100).toFixed(0)}%)` : '';
-    
-    return (
-      <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-300">
-        {emoji} {activity}{confidenceText}
-      </Badge>
-    );
-  };
 
   if (loading) {
     return (
@@ -421,11 +386,6 @@ export default function ImageGallery({ className = '', onStatsUpdate }: ImageGal
                       <Badge variant="secondary" className="text-xs">
                         {image.source}
                       </Badge>
-                      {image.cat_count > 0 && (
-                        <Badge variant="default" className="text-xs flex items-center space-x-1">
-                          <span>{image.cat_count} cat{image.cat_count > 1 ? 's' : ''}</span>
-                        </Badge>
-                      )}
                       {getCatNames(image).map((catName, index) => (
                         <Badge 
                           key={index} 
@@ -438,12 +398,6 @@ export default function ImageGallery({ className = '', onStatsUpdate }: ImageGal
                         >
                           🐱 {catName}
                         </Badge>
-                      ))}
-                      {/* Activity badges */}
-                      {getCatActivities(image).map((catActivity, index) => (
-                        <div key={index} className="flex items-center space-x-1">
-                          {getActivityBadge(catActivity.activity, catActivity.confidence)}
-                        </div>
                       ))}
                     </div>
                     
@@ -470,22 +424,6 @@ export default function ImageGallery({ className = '', onStatsUpdate }: ImageGal
                           <span className="font-medium">Size:</span>
                           <span>{image.file_size_mb}MB</span>
                         </div>
-                        {image.detections && image.detections.length > 0 && (
-                          <div className="flex items-center justify-between">
-                            <span className="font-medium">Cats:</span>
-                            <span className="truncate ml-2">
-                              {getCatNames(image).join(', ')}
-                            </span>
-                          </div>
-                        )}
-                        {getCatActivities(image).length > 0 && (
-                          <div className="flex items-center justify-between">
-                            <span className="font-medium">Activities:</span>
-                            <span className="truncate ml-2">
-                              {getCatActivities(image).map(ca => ca.activity).join(', ')}
-                            </span>
-                          </div>
-                        )}
                       </div>
                       
                       <div className="flex items-center justify-between pt-2">
