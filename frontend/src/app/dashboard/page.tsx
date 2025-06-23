@@ -100,21 +100,38 @@ export default function DashboardPage() {
     return activityColors[activity] || '#6b7280';
   };
 
-  // Get all unique cats from timeline data
-  const getUniqueCats = (timelineData: ActivityTimeline) => {
-    const cats = new Set<string>();
+  // Get cats that have profiles (from catsData) and exist in timeline
+  const getProfiledCats = (timelineData: ActivityTimeline, catsData: CatActivitySummary | null) => {
+    if (!catsData) return [];
+    
+    // Get cat names from profiles (these are cats with actual profiles)
+    const profiledCatNames = new Set(catsData.cats.map(cat => cat.cat_name));
+    
+    // Get cats that appear in timeline data
+    const timelineCats = new Set<string>();
     timelineData.timeline.forEach(bucket => {
-      Object.keys(bucket.named_cats).forEach(cat => cats.add(cat));
+      Object.keys(bucket.named_cats).forEach(cat => timelineCats.add(cat));
     });
-    return Array.from(cats).sort();
+    
+    // Return only cats that have both profiles and timeline data
+    const filteredCats = Array.from(profiledCatNames).filter(cat => timelineCats.has(cat));
+    return filteredCats.sort();
   };
 
-  // Get all unique activities from timeline data
-  const getUniqueActivities = (timelineData: ActivityTimeline) => {
+  // Get unique activities from profiled cats only
+  const getUniqueActivitiesForProfiledCats = (timelineData: ActivityTimeline, catsData: CatActivitySummary | null) => {
+    if (!catsData) return [];
+    
+    const profiledCats = getProfiledCats(timelineData, catsData);
     const activities = new Set<string>();
+    
     timelineData.timeline.forEach(bucket => {
-      Object.keys(bucket.activities).forEach(activity => activities.add(activity));
+      profiledCats.forEach(catName => {
+        const catActivities = bucket.cat_activities[catName] || {};
+        Object.keys(catActivities).forEach(activity => activities.add(activity));
+      });
     });
+    
     return Array.from(activities).sort();
   };
 
@@ -525,7 +542,7 @@ export default function DashboardPage() {
                   </CardHeader>
                   <CardContent>
                     <div className="flex flex-wrap gap-2">
-                      {getUniqueActivities(timelineData).map((activity) => (
+                      {getUniqueActivitiesForProfiledCats(timelineData, catsData).map((activity) => (
                         <Badge 
                           key={activity}
                           variant="outline" 
@@ -547,7 +564,19 @@ export default function DashboardPage() {
                 </Card>
 
                 {/* Per-Cat Activity Charts */}
-                {getUniqueCats(timelineData).map((catName) => (
+                {getProfiledCats(timelineData, catsData).length === 0 ? (
+                  <Card>
+                    <CardContent className="p-6 text-center">
+                      <p className="text-gray-400">
+                        No activity data available for cats with profiles in the selected time range.
+                      </p>
+                      <p className="text-sm text-gray-500 mt-2">
+                        Try selecting a longer time range or ensure your cats have been detected and have profiles created.
+                      </p>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  getProfiledCats(timelineData, catsData).map((catName) => (
                   <Card key={catName}>
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2">
@@ -631,7 +660,8 @@ export default function DashboardPage() {
                       </div>
                     </CardContent>
                   </Card>
-                ))}
+                  ))
+                )}
 
                 {/* Recent timeline entries */}
                 <Card>
