@@ -40,7 +40,6 @@ export default function ImageGallery({ className = '', onStatsUpdate }: ImageGal
   const [fetchingNew, setFetchingNew] = useState(false);
   const [reprocessingAll, setReprocessingAll] = useState(false);
   const [reprocessingImages, setReprocessingImages] = useState<Set<string>>(new Set());
-  const [feedbackStats, setFeedbackStats] = useState<{total: number, annotatedImages: number} | null>(null);
   const [configLoaded, setConfigLoaded] = useState(() => configManager.isConfigLoaded());
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -76,10 +75,6 @@ export default function ImageGallery({ className = '', onStatsUpdate }: ImageGal
       
       // Update feedback stats based on current page
       const annotatedCount = response.images.filter(img => img.has_feedback).length;
-      setFeedbackStats({
-        total: response.total,
-        annotatedImages: annotatedCount
-      });
       
       // Notify parent component of stats update (use total, not just current page)
       onStatsUpdate?.(response.total, annotatedCount);
@@ -312,11 +307,6 @@ export default function ImageGallery({ className = '', onStatsUpdate }: ImageGal
               </CardTitle>
               <CardDescription>
                 Recent images captured from cameras with AI detection results.
-                {feedbackStats && feedbackStats.total > 0 && (
-                  <span className="text-primary">
-                    {' '}Help improve the AI by labeling more images.
-                  </span>
-                )}
               </CardDescription>
             </div>
           </div>

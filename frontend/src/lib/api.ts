@@ -674,4 +674,152 @@ export const catProfileApi = {
     }>;
     data_source: string;
   }> => apiClient.getCatActivityHistory(catName),
+};
+
+// Dashboard interfaces
+export interface DashboardOverview {
+  time_period_hours: number;
+  total_named_cats: number;
+  named_cats_seen_recently: number;
+  total_detections: number;
+  total_cats_detected: number;
+  top_locations: Array<{
+    location: string;
+    activity_count: number;
+  }>;
+  recent_activities: Array<{
+    timestamp: string;
+    location: string;
+    cat_name?: string;
+    activity?: string;
+    confidence: number;
+  }>;
+  summary: {
+    avg_cats_per_detection: number;
+    most_active_location?: string;
+    named_cats_list: string[];
+  };
+}
+
+export interface CatActivitySummary {
+  time_period_hours: number;
+  cats: Array<{
+    cat_name: string;
+    cat_uuid: string;
+    description?: string;
+    total_detections: number;
+    favorite_locations: Array<{
+      location: string;
+      count: number;
+    }>;
+    common_activities: Array<{
+      activity: string;
+      count: number;
+    }>;
+    last_seen?: string;
+    last_location?: string;
+    avg_confidence: number;
+    recent_timeline: Array<{
+      timestamp: string;
+      location: string;
+      activity: string;
+      confidence: number;
+    }>;
+    is_active: boolean;
+  }>;
+  total_cats: number;
+  active_cats: number;
+}
+
+export interface LocationActivitySummary {
+  time_period_hours: number;
+  locations: Array<{
+    location: string;
+    total_detections: number;
+    total_cats_detected: number;
+    unique_cats_count: number;
+    unique_cats: string[];
+    common_activities: Array<{
+      activity: string;
+      count: number;
+    }>;
+    hourly_activity_pattern: number[];
+    peak_hour: number;
+    avg_confidence: number;
+    avg_cats_per_detection: number;
+    recent_timeline: Array<{
+      timestamp: string;
+      cat_name?: string;
+      activity: string;
+      confidence: number;
+    }>;
+    camera_config?: {
+      enabled: boolean;
+      interval_seconds: number;
+      url: string;
+    };
+  }>;
+  total_locations: number;
+}
+
+export interface ActivityTimeline {
+  time_period_hours: number;
+  granularity: string;
+  bucket_size_minutes: number;
+  timeline: Array<{
+    timestamp: string;
+    total_detections: number;
+    total_cats: number;
+    locations: Record<string, number>;
+    activities: Record<string, number>;
+    named_cats: Record<string, number>;
+    unique_cats_count: number;
+    most_active_location?: string;
+    primary_activity?: string;
+  }>;
+  total_buckets: number;
+  summary: {
+    total_detections: number;
+    total_cats_detected: number;
+    peak_activity_time?: string;
+  };
+}
+
+// Dashboard API methods
+export const dashboardApi = {
+  getOverview: async (hours: number = 24): Promise<DashboardOverview> => {
+    const baseURL = configManager.getApiUrl();
+    const response = await fetch(`${baseURL}/dashboard/overview?hours=${hours}`, {
+      headers: { 'Content-Type': 'application/json' }
+    });
+    if (!response.ok) throw new Error(`Failed to fetch dashboard overview: ${response.statusText}`);
+    return response.json();
+  },
+  
+  getCats: async (hours: number = 24): Promise<CatActivitySummary> => {
+    const baseURL = configManager.getApiUrl();
+    const response = await fetch(`${baseURL}/dashboard/cats?hours=${hours}`, {
+      headers: { 'Content-Type': 'application/json' }
+    });
+    if (!response.ok) throw new Error(`Failed to fetch cats dashboard: ${response.statusText}`);
+    return response.json();
+  },
+  
+  getLocations: async (hours: number = 24): Promise<LocationActivitySummary> => {
+    const baseURL = configManager.getApiUrl();
+    const response = await fetch(`${baseURL}/dashboard/locations?hours=${hours}`, {
+      headers: { 'Content-Type': 'application/json' }
+    });
+    if (!response.ok) throw new Error(`Failed to fetch locations dashboard: ${response.statusText}`);
+    return response.json();
+  },
+  
+  getTimeline: async (hours: number = 24, granularity: string = 'hour'): Promise<ActivityTimeline> => {
+    const baseURL = configManager.getApiUrl();
+    const response = await fetch(`${baseURL}/dashboard/timeline?hours=${hours}&granularity=${granularity}`, {
+      headers: { 'Content-Type': 'application/json' }
+    });
+    if (!response.ok) throw new Error(`Failed to fetch timeline dashboard: ${response.statusText}`);
+    return response.json();
+  },
 }; 

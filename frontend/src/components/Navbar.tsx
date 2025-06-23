@@ -4,12 +4,13 @@ import Link from 'next/link';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Menu, X, Settings, Cat } from 'lucide-react';
+import { Menu, X, Settings, Cat, BarChart3 } from 'lucide-react';
 
 export default function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const navItems = [
+    { href: '/dashboard', label: 'Dashboard', icon: BarChart3 },
     { href: '/cat-profiles', label: 'Cat Profiles', icon: Cat },
     { href: '/settings', label: 'Settings', icon: Settings },
   ];
