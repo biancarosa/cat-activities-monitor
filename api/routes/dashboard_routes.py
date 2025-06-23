@@ -442,6 +442,18 @@ async def get_timeline_dashboard(request: Request, hours: int = 24, granularity:
         cutoff_time_str = cutoff_time.isoformat()
         
         async with database_service.get_session() as session:
+            # Get all cat profiles to map names
+            cat_profiles_stmt = select(CatProfile)
+            cat_profiles_result = await session.execute(cat_profiles_stmt)
+            cat_profiles = cat_profiles_result.scalars().all()
+            
+            # Create a mapping from potential detected names to canonical profile names
+            # This handles cases like "Pimenta?" vs "Pimenta"
+            cat_name_map = {}
+            for profile in cat_profiles:
+                cat_name_map[profile.name] = profile.name
+                cat_name_map[f"{profile.name}?"] = profile.name
+
             # Get recent detections within time period
             recent_detections_stmt = select(DetectionResult).where(
                 DetectionResult.timestamp >= cutoff_time_str
@@ -459,14 +471,6 @@ async def get_timeline_dashboard(request: Request, hours: int = 24, granularity:
                 "named_cats": defaultdict(int),
                 "cat_activities": defaultdict(lambda: defaultdict(int))  # cat_name -> activity -> count
             })
-            
-            # Determine bucket size
-            if granularity == "15min":
-                bucket_minutes = 15
-            elif granularity == "hour":
-                bucket_minutes = 60
-            else:  # day
-                bucket_minutes = 1440
             
             # Process detection data into time buckets
             import json
@@ -500,54 +504,84 @@ async def get_timeline_dashboard(request: Request, hours: int = 24, granularity:
                         activity = det.get('activity') or det.get('contextual_activity') or 'unknown'
                         timeline_data[bucket_key]["activities"][activity] += 1
                         
-                        # Track named cats
-                        cat_name = det.get('cat_name')
-                        if cat_name:
-                            timeline_data[bucket_key]["named_cats"][cat_name] += 1
-                            # Track per-cat activities
-                            timeline_data[bucket_key]["cat_activities"][cat_name][activity] += 1
+                        # Track named cat activities using the name map
+                        detected_cat_name = det.get('cat_name')
+                        if detected_cat_name:
+                            canonical_name = cat_name_map.get(detected_cat_name)
+                            if canonical_name:
+                                timeline_data[bucket_key]["named_cats"][canonical_name] += 1
+                                timeline_data[bucket_key]["cat_activities"][canonical_name][activity] += 1
+            
+            # Create a full timeline with all buckets, even if empty
+            start_time = datetime.fromisoformat(cutoff_time_str)
+            end_time = datetime.now()
+            
+            # Align start time to the beginning of the bucket
+            if granularity == "15min":
+                start_time = start_time.replace(minute=(start_time.minute // 15) * 15, second=0, microsecond=0)
+                time_delta = timedelta(minutes=15)
+            elif granularity == "hour":
+                start_time = start_time.replace(minute=0, second=0, microsecond=0)
+                time_delta = timedelta(hours=1)
+            else:  # day
+                start_time = start_time.replace(hour=0, minute=0, second=0, microsecond=0)
+                time_delta = timedelta(days=1)
+
+            full_timeline = {}
+            current_time = start_time
+            while current_time <= end_time:
+                bucket_key = current_time.isoformat()
+                raw_bucket = timeline_data.get(bucket_key)
+
+                if raw_bucket:
+                    # Convert defaultdicts to regular dicts for JSON serialization
+                    locations_dict = dict(raw_bucket["locations"])
+                    activities_dict = dict(raw_bucket["activities"])
+                    named_cats_dict = dict(raw_bucket["named_cats"])
+                    cat_activities_dict = {
+                        cat: dict(acts) for cat, acts in raw_bucket["cat_activities"].items()
+                    }
+                    
+                    full_timeline[bucket_key] = {
+                        "timestamp": bucket_key,
+                        "total_detections": raw_bucket["total_detections"],
+                        "total_cats": raw_bucket["total_cats"],
+                        "locations": locations_dict,
+                        "activities": activities_dict,
+                        "named_cats": named_cats_dict,
+                        "cat_activities": cat_activities_dict,
+                        "unique_cats_count": len(named_cats_dict),
+                        "most_active_location": max(locations_dict, key=locations_dict.get) if locations_dict else None,
+                        "primary_activity": max(activities_dict, key=activities_dict.get) if activities_dict else None,
+                    }
+                else:
+                    full_timeline[bucket_key] = {
+                        "timestamp": bucket_key,
+                        "total_detections": 0, "total_cats": 0,
+                        "locations": {}, "activities": {}, "named_cats": {}, "cat_activities": {},
+                        "unique_cats_count": 0, "most_active_location": None, "primary_activity": None
+                    }
+                current_time += time_delta
             
             # Convert to sorted list
-            timeline_list = []
-            for bucket_key in sorted(timeline_data.keys()):
-                data = timeline_data[bucket_key]
-                
-                # Convert defaultdicts to regular dicts
-                locations_dict = dict(data["locations"])
-                activities_dict = dict(data["activities"])
-                named_cats_dict = dict(data["named_cats"])
-                cat_activities_dict = {
-                    cat_name: dict(activities) 
-                    for cat_name, activities in data["cat_activities"].items()
-                }
-                
-                timeline_item = {
-                    "timestamp": bucket_key,
-                    "total_detections": data["total_detections"],
-                    "total_cats": data["total_cats"],
-                    "locations": locations_dict,
-                    "activities": activities_dict,
-                    "named_cats": named_cats_dict,
-                    "cat_activities": cat_activities_dict,
-                    "unique_cats_count": len(named_cats_dict),
-                    "most_active_location": max(locations_dict, key=locations_dict.get) if locations_dict else None,
-                    "primary_activity": max(activities_dict, key=activities_dict.get) if activities_dict else None
-                }
-                timeline_list.append(timeline_item)
+            timeline_list = sorted(full_timeline.values(), key=lambda x: x['timestamp'])
             
+            # Calculate summary
+            total_detections = sum(b['total_detections'] for b in timeline_list)
+            most_active_period = max(timeline_list, key=lambda x: x['total_detections']) if any(b['total_detections'] > 0 for b in timeline_list) else None
+
             return {
                 "time_period_hours": hours,
                 "granularity": granularity,
-                "bucket_size_minutes": bucket_minutes,
-                "timeline": timeline_list,
                 "total_buckets": len(timeline_list),
+                "timeline": timeline_list,
                 "summary": {
-                    "total_detections": sum(item["total_detections"] for item in timeline_list),
-                    "total_cats_detected": sum(item["total_cats"] for item in timeline_list),
-                    "peak_activity_time": (
-                        max(timeline_list, key=lambda x: x["total_cats"])["timestamp"] 
-                        if timeline_list else None
-                    )
+                    "total_detections": total_detections,
+                    "avg_detections_per_bucket": (
+                        round(total_detections / len(timeline_list), 2) 
+                        if timeline_list else 0
+                    ),
+                    "most_active_period": most_active_period,
                 }
             }
             

@@ -592,39 +592,54 @@ export default function DashboardPage() {
                       <div className="space-y-4">
                         {/* Cat activity chart */}
                         <div className="flex items-end space-x-1 h-32">
-                          {timelineData.timeline.map((bucket, index) => {
-                            const catActivities = bucket.cat_activities[catName] || {};
-                            const totalCatActivity = Object.values(catActivities).reduce((sum, count) => sum + count, 0);
-                            const maxActivity = Math.max(...timelineData.timeline.map(b => {
+                          {(() => {
+                            // Calculate max activity for this specific cat across all time periods
+                            const maxActivity = Math.max(1, ...timelineData.timeline.map(b => {
                               const activities = b.cat_activities[catName] || {};
                               return Object.values(activities).reduce((sum, count) => sum + count, 0);
                             }));
                             
-                            return (
-                              <div
-                                key={index}
-                                className="flex-1 min-w-[8px] flex flex-col justify-end"
-                                title={`${new Date(bucket.timestamp).toLocaleString()}: ${totalCatActivity} activities`}
-                              >
-                                {/* Stacked activity bars */}
-                                {Object.entries(catActivities).map(([activity, count], actIndex) => {
-                                  const height = maxActivity > 0 ? (count / maxActivity) * 100 : 0;
-                                  return (
-                                    <div
-                                      key={actIndex}
-                                      className="w-full rounded-t"
-                                      style={{
-                                        backgroundColor: getActivityColor(activity),
-                                        height: `${Math.max(2, height)}%`,
-                                        marginTop: actIndex > 0 ? '1px' : '0'
-                                      }}
-                                      title={`${activity}: ${count}`}
+                            return timelineData.timeline.map((bucket, index) => {
+                              const catActivities = bucket.cat_activities[catName] || {};
+                              const totalCatActivity = Object.values(catActivities).reduce((sum, count) => sum + count, 0);
+                              
+                              return (
+                                <div
+                                  key={index}
+                                  className="flex-1 min-w-[3px] flex flex-col justify-end"
+                                  title={`${new Date(bucket.timestamp).toLocaleString()}: ${totalCatActivity} activities`}
+                                >
+                                  {/* Show bars only if there's activity */}
+                                  {totalCatActivity > 0 ? (
+                                    Object.entries(catActivities).map(([activity, count], actIndex) => {
+                                      const height = Math.max(8, (count / maxActivity) * 120); // Use 120px as max height
+                                      
+                                      return (
+                                        <div
+                                          key={actIndex}
+                                          className="w-full rounded-t-sm"
+                                          style={{
+                                            backgroundColor: getActivityColor(activity),
+                                            height: `${height}px`,
+                                            marginTop: actIndex > 0 ? '1px' : '0',
+                                            minHeight: '4px'
+                                          }}
+                                          title={`${activity}: ${count}`}
+                                        />
+                                      );
+                                    })
+                                  ) : (
+                                    // Show a very small placeholder bar for empty periods
+                                    <div 
+                                      className="w-full bg-gray-700 opacity-20 rounded-t-sm"
+                                      style={{ height: '2px' }}
+                                      title="No activity"
                                     />
-                                  );
-                                })}
-                              </div>
-                            );
-                          })}
+                                  )}
+                                </div>
+                              );
+                            });
+                          })()}
                         </div>
                         
                         {/* Time labels */}
@@ -634,28 +649,43 @@ export default function DashboardPage() {
                         </div>
                         
                         {/* Cat's top activities */}
-                        <div className="flex flex-wrap gap-2">
-                          {Object.entries(
-                            timelineData.timeline.reduce((acc, bucket) => {
-                              const catActivities = bucket.cat_activities[catName] || {};
-                              Object.entries(catActivities).forEach(([activity, count]) => {
-                                acc[activity] = (acc[activity] || 0) + count;
-                              });
-                              return acc;
-                            }, {} as Record<string, number>)
-                          )
-                          .sort(([,a], [,b]) => b - a)
-                          .slice(0, 5)
-                          .map(([activity, count]) => (
-                            <Badge 
-                              key={activity}
-                              variant="secondary" 
-                              className="text-xs"
-                              style={{ backgroundColor: getActivityColor(activity) + '20' }}
-                            >
-                              {activity}: {count}
-                            </Badge>
-                          ))}
+                        <div className="space-y-2">
+                          <div className="flex flex-wrap gap-2">
+                            {Object.entries(
+                              timelineData.timeline.reduce((acc, bucket) => {
+                                const catActivities = bucket.cat_activities[catName] || {};
+                                Object.entries(catActivities).forEach(([activity, count]) => {
+                                  acc[activity] = (acc[activity] || 0) + count;
+                                });
+                                return acc;
+                              }, {} as Record<string, number>)
+                            )
+                            .sort(([,a], [,b]) => b - a)
+                            .slice(0, 5)
+                            .map(([activity, count]) => (
+                              <Badge 
+                                key={activity}
+                                variant="secondary" 
+                                className="text-xs"
+                                style={{ backgroundColor: getActivityColor(activity) + '20' }}
+                              >
+                                {activity}: {count}
+                              </Badge>
+                            ))}
+                          </div>
+                          
+                          {/* Debug info */}
+                          <div className="text-xs text-gray-500">
+                            Total periods: {timelineData.timeline.length} | 
+                            Periods with activity: {timelineData.timeline.filter(b => {
+                              const activities = b.cat_activities[catName] || {};
+                              return Object.values(activities).reduce((sum, count) => sum + count, 0) > 0;
+                            }).length} |
+                            Max activity: {Math.max(1, ...timelineData.timeline.map(b => {
+                              const activities = b.cat_activities[catName] || {};
+                              return Object.values(activities).reduce((sum, count) => sum + count, 0);
+                            }))}
+                          </div>
                         </div>
                       </div>
                     </CardContent>
