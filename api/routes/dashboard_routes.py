@@ -4,11 +4,10 @@ Dashboard routes for cat activities and location monitoring.
 
 import logging
 from datetime import datetime, timedelta
-from typing import Dict, List, Any, Optional
-from collections import defaultdict, Counter
+from collections import defaultdict
 
 from fastapi import APIRouter, Request, HTTPException
-from sqlalchemy import select, func, desc, and_, distinct
+from sqlalchemy import select, func, desc, distinct
 
 from persistence.models import DetectionResult, CatProfile
 
