@@ -1,0 +1,79 @@
+# Cat Activities Monitor Configuration Template
+# Copy this file to config.yaml and customize with your camera URLs
+
+# Camera Configuration (Required)
+images:
+  - name: "living-room"
+    url: "http://YOUR_CAMERA_IP:PORT/snapshot/living-room.jpg"
+    # Note: interval_seconds and enabled are not currently implemented per-camera
+    
+  - name: "bedroom" 
+    url: "http://YOUR_CAMERA_IP:PORT/snapshot/bedroom.jpg"
+
+# Global Settings (Optional - only override if needed)
+# All values shown below are already set as defaults in the code
+global:
+  # Camera fetch intervals and limits
+  default_interval_seconds: 60     # How often to fetch from cameras (seconds)
+  max_concurrent_fetches: 3        # Max simultaneous camera fetches
+  timeout_seconds: 30              # HTTP timeout for camera requests
+  
+  # Image cleanup configuration
+  image_cleanup:
+    enabled: true                  # Enable automatic cleanup of old images
+    retention_days: 3              # Days to keep detection images
+    cleanup_interval_hours: 24     # How often to run cleanup
+  
+  # ML Model Configuration (Advanced)
+  ml_model_config:
+    # Model Selection
+    model: "ml_models/yolo11l.pt"  # YOLO model file path
+    # Available sizes: yolo11n (fastest) -> yolo11s -> yolo11m -> yolo11l -> yolo11x (most accurate)
+    
+    # Detection Thresholds
+    confidence_threshold: 0.01     # Ultra-sensitive detection (0.0-1.0)
+    iou_threshold: 0.1            # Low IoU for overlapping cats (0.0-1.0)
+    max_detections: 1000          # Maximum detections per image
+    image_size: 1280              # Model input size (320, 640, 1280)
+    
+    # Target Classes (COCO dataset IDs)
+    target_classes: [15, 16]      # 15=cat, 16=dog (recommended for better cat detection)
+    
+    # Contextual Objects (for activity detection)
+    contextual_objects: [45, 56, 57, 59, 60, 61, 58, 71]  # bowl, chair, couch, bed, table, toilet, plant, sink
+    
+    # Image Saving
+    save_detection_images: true    # Save annotated images for debugging
+    detection_image_path: "./detections"  # Output directory
+    
+    # Change Detection (Smart Image Saving)
+    change_detection:
+      enabled: true                      # Enable smart change detection
+      similarity_threshold: 0.85         # Image similarity threshold (0.0-1.0)
+      detection_change_threshold: 0.3    # Minimum confidence change to save
+      position_change_threshold: 50.0    # Minimum pixel movement to save
+      activity_change_triggers: true     # Save when activity changes
+    
+    # Activity Detection (Contextual Analysis)
+    activity_detection:
+      enabled: true                      # Enable activity detection
+      detection_mode: "contextual"       # Detection mode: contextual, rule_based, pose_based
+      interaction_thresholds:
+        proximity_distance: 100.0        # Distance for object interaction
+        overlap_threshold: 0.1           # Overlap threshold for interactions
+        eating_confidence: 0.8           # Confidence for eating activity
+        sleeping_confidence: 0.7         # Confidence for sleeping activity
+
+# Common COCO Class IDs for reference:
+# 0: person, 15: cat, 16: dog, 17: horse, 18: sheep, 19: cow, 20: elephant
+# 21: bear, 22: zebra, 23: giraffe, 45: bowl, 56: chair, 57: couch, 59: bed
+# 60: dining table, 61: toilet, 58: potted plant, 71: sink
+
+# Minimal Configuration Example:
+# Just cameras are required - everything else uses sensible defaults
+# 
+# images:
+#   - name: "camera1"
+#     url: "http://192.168.1.100:8080/snapshot.jpg"
+#   - name: "camera2" 
+#     url: "http://192.168.1.101:8080/snapshot.jpg"

@@ -12,7 +12,7 @@
 1 - The docker-compose.example.yml file contains a base configuration for the docker compose. You can use it as a reference to create your own, or just copy and paste it.
 2 - Change the <your-server-ip-address> to the ip address / domain name of the machine that will run the api and frontend.
 3 - Create a config.yaml file next to your docker-compose.yml file.
-4 - Use the config.yaml.example file as a reference to create your own.
+4 - Use the config.minimal.yaml file for basic setup or config.full.yaml for advanced configuration as a reference to create your own.
 5 - Run the docker compose up command.
 6 - Go to <your-server-ip-address>:3000 and you should see the frontend <3
 

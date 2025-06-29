@@ -227,8 +227,7 @@ export default function FeedbackModal({
             <div className="flex items-center space-x-2 text-green-700 dark:text-green-400">
               <CheckCircle className="h-4 w-4" />
               <span className="text-sm">
-                🎉 Thank you! Your per-cat feedback has been saved and will help train better AI models. 
-                Keep providing detailed feedback to improve detection accuracy!
+                🎉 Feedback submitted!
               </span>
             </div>
           </div>

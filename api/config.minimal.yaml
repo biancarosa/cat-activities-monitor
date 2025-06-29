@@ -1,0 +1,15 @@
+# Minimal Cat Activities Monitor Configuration
+# Copy this file to config.yaml and update with your camera URLs
+# All other settings use sensible defaults from the code
+
+images:
+  - name: "living-room"
+    url: "http://YOUR_CAMERA_IP:PORT/snapshot/living-room.jpg"
+    
+  - name: "bedroom" 
+    url: "http://YOUR_CAMERA_IP:PORT/snapshot/bedroom.jpg"
+
+# Optional: Override image cleanup settings
+# global:
+#   image_cleanup:
+#     retention_days: 7  # Keep images longer (default: 3 days)
