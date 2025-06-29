@@ -2,6 +2,52 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.0.0](https://github.com/biancarosa/cat-activities-monitor/compare/v0.2.1...v1.0.0) (2025-06-29)
+
+
+### Features
+
+* add comprehensive cat activities dashboard ([66916b5](https://github.com/biancarosa/cat-activities-monitor/commit/66916b59862759acc1ec95032fa6cdf6d2cf518e))
+* differentiate cats from contextual objects ([0da9d08](https://github.com/biancarosa/cat-activities-monitor/commit/0da9d08c64d652d35702cd6a54166b77e2477072))
+* enhance dashboard timeline with interactive per-cat activity charts ([17d33b7](https://github.com/biancarosa/cat-activities-monitor/commit/17d33b73955f99dad173a63424af9735d7f6ac24))
+* filter timeline to show only cats with profiles ([f22a002](https://github.com/biancarosa/cat-activities-monitor/commit/f22a002f12e1448f04c06ab5f1c604f6ceebdb26))
+* implement automated image cleanup process ([d1a26b8](https://github.com/biancarosa/cat-activities-monitor/commit/d1a26b80ef96a9de74dbbd09924f19c076828818))
+* implement contextual activity detection system ([1b23696](https://github.com/biancarosa/cat-activities-monitor/commit/1b23696641e098ce586832ecbd830218d188a594))
+
+
+### Bug Fixes
+
+* a shitton of stuff ([907e0c3](https://github.com/biancarosa/cat-activities-monitor/commit/907e0c3574919b0aa2208a86d357b23a402d57f0))
+* improve timeline visualization with better bar rendering and debug info ([1f614c3](https://github.com/biancarosa/cat-activities-monitor/commit/1f614c347b77da0bcc1b45df9dce1421c46f9148))
+* remove automatic Claude code review workflow ([8a52174](https://github.com/biancarosa/cat-activities-monitor/commit/8a52174b88319bfe663be6d76149f81f5c1eda5d))
+* remove unused imports from dashboard routes ([03fd63d](https://github.com/biancarosa/cat-activities-monitor/commit/03fd63d2c27c83028a352a96bcafb23cc5c432b8))
+* resolve React Hook linting warnings in ImageGallery ([77b081b](https://github.com/biancarosa/cat-activities-monitor/commit/77b081bcd3b7e156434fb30ba9d7164c8d4981c3))
+* separate cats from contextual objects in API response ([d45d8ad](https://github.com/biancarosa/cat-activities-monitor/commit/d45d8ad36d811d303ce7f742f87a74bdc634ab58))
+* store activity detection data in database ([e8edb48](https://github.com/biancarosa/cat-activities-monitor/commit/e8edb48e4e715723ba28d0fd1ed7a87343e52101))
+
+
+### Performance Improvements
+
+* **frontend:** perf improvements ([f4405b0](https://github.com/biancarosa/cat-activities-monitor/commit/f4405b08d900cf7e2a02aadbe1e1758dc466f804))
+
+
+### Chores
+
+* fix linting errors and format code with black ([70b4492](https://github.com/biancarosa/cat-activities-monitor/commit/70b4492eb99f03752f48b14dea613bc86fce19c8))
+* **frontend:** remove useless button ([0e64759](https://github.com/biancarosa/cat-activities-monitor/commit/0e64759bda776d40b6918de19b530543e4d3ee56))
+* remove unused method ([ac78bac](https://github.com/biancarosa/cat-activities-monitor/commit/ac78bacd0ffffbccc369fe605fd863eef5196ba6))
+
+
+### Documentation
+
+* update migration documentation for contextual_objects field ([596f3b1](https://github.com/biancarosa/cat-activities-monitor/commit/596f3b143333a4e3d95f8876873f83115ce3f99f))
+* update openapi docs ([a193dfa](https://github.com/biancarosa/cat-activities-monitor/commit/a193dfa9fa1aa8cfa48cec78fdc2e614e51553e5))
+
+
+### Code Refactoring
+
+* clean up image gallery UI by removing cat count and activity displays ([92a67c1](https://github.com/biancarosa/cat-activities-monitor/commit/92a67c15f42f5925ea3c61107a159d631db041d7))
+
 ### [0.2.1](https://github.com/biancarosa/cat-activities-monitor/compare/v0.2.0...v0.2.1) (2025-06-21)
 
 
