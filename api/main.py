@@ -33,6 +33,7 @@ from routes import (
     training_routes,
     cat_routes,
     maintenance_routes,
+    dashboard_routes,
 )
 
 # Configure logging
@@ -326,6 +327,10 @@ app = FastAPI(
             "name": "maintenance",
             "description": "System maintenance endpoints for image cleanup, database management, and system optimization.",
         },
+        {
+            "name": "dashboard",
+            "description": "Dashboard endpoints for cat activity monitoring, location tracking, and analytics visualization.",
+        },
     ],
     servers=[
         {"url": "http://localhost:8000", "description": "Development server"},
@@ -355,6 +360,7 @@ app.include_router(feedback_routes.router, tags=["feedback"])
 app.include_router(training_routes.router, tags=["training"])
 app.include_router(cat_routes.router, tags=["cats"])
 app.include_router(maintenance_routes.router, tags=["maintenance"])
+app.include_router(dashboard_routes.router, tags=["dashboard"])
 
 if __name__ == "__main__":
     import uvicorn
